@@ -1,0 +1,108 @@
+package br.com.fiap.feedback.application.service;
+
+import br.com.fiap.feedback.application.port.input.ListAllFeedbackUseCase;
+import br.com.fiap.feedback.application.port.input.ListMyFeedbackUseCase;
+import br.com.fiap.feedback.application.port.input.SubmitFeedbackUseCase;
+import br.com.fiap.feedback.application.port.output.FeedbackRepositoryPort;
+import br.com.fiap.feedback.application.port.output.NotificationPort;
+import br.com.fiap.feedback.application.port.output.StudentRepositoryPort;
+import br.com.fiap.feedback.domain.Feedback;
+import br.com.fiap.feedback.domain.Student;
+import br.com.fiap.feedback.domain.exception.UserNotFoundException;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.transaction.Transactional;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * Implements the three feedback use cases.
+ *
+ * <p>On submission, when the score is critical the admin is notified and the feedback is
+ * flagged as notified in the same transaction.</p>
+ */
+@ApplicationScoped
+public class FeedbackService implements
+        SubmitFeedbackUseCase,
+        ListMyFeedbackUseCase,
+        ListAllFeedbackUseCase {
+
+    private static final Logger log = LoggerFactory.getLogger(FeedbackService.class);
+
+    private final FeedbackRepositoryPort feedbackRepository;
+    private final StudentRepositoryPort studentRepository;
+    private final NotificationPort notification;
+
+    /** Course every submission is attached to (seeded by Flyway V1). */
+    private final UUID defaultCourseId;
+
+    public FeedbackService(FeedbackRepositoryPort feedbackRepository,
+                           StudentRepositoryPort studentRepository,
+                           NotificationPort notification,
+                           @ConfigProperty(name = "app.default-course-id") UUID defaultCourseId) {
+        this.feedbackRepository = feedbackRepository;
+        this.studentRepository = studentRepository;
+        this.notification = notification;
+        this.defaultCourseId = defaultCourseId;
+    }
+
+    @Override
+    @Transactional
+    public Feedback submit(SubmitFeedbackCommand command) {
+        int score = command.score();
+        if (score < Feedback.MIN_SCORE || score > Feedback.MAX_SCORE) {
+            throw new IllegalArgumentException(
+                    "score must be between " + Feedback.MIN_SCORE + " and " + Feedback.MAX_SCORE);
+        }
+
+        Feedback feedback = Feedback.builder()
+                .studentId(command.studentId())
+                .courseId(defaultCourseId)
+                .score(score)
+                .reviewDescription(command.description())
+                .reviewDate(OffsetDateTime.now())
+                .notified(false)
+                .build();
+
+        feedback = feedbackRepository.save(feedback);
+        log.info("Feedback {} submitted by student {} with score {}",
+                feedback.getId(), feedback.getStudentId(), feedback.getScore());
+
+        if (feedback.isCritical()) {
+            feedback = notifyAdmin(feedback);
+        }
+
+        return feedback;
+    }
+
+    /** Sends the low-score alert and persists the notified flag. */
+    private Feedback notifyAdmin(Feedback feedback) {
+        Student student = studentRepository.findByLocalId(feedback.getStudentId())
+                .orElseThrow(() -> new UserNotFoundException(
+                        "Student not found: " + feedback.getStudentId()));
+
+        log.warn("Critical feedback {} (score {}) from student {} - notifying admin",
+                feedback.getId(), feedback.getScore(), student.getId());
+
+        notification.notifyLowScore(feedback, student);
+
+        Feedback notified = feedback.markNotified(OffsetDateTime.now());
+        return feedbackRepository.save(notified);
+    }
+
+    @Override
+    public List<Feedback> listForStudent(UUID studentId) {
+        return feedbackRepository.findByStudentId(studentId);
+    }
+
+    @Override
+    public FeedbackPage listAll(int page, int size) {
+        List<Feedback> items = feedbackRepository.findAll(page, size);
+        long total = feedbackRepository.countAll();
+        return new FeedbackPage(items, page, size, total);
+    }
+}

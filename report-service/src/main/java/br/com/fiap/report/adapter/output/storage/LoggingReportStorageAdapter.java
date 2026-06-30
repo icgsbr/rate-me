@@ -1,0 +1,25 @@
+package br.com.fiap.report.adapter.output.storage;
+
+import br.com.fiap.report.application.port.output.ReportStoragePort;
+import br.com.fiap.report.domain.WeeklyReport;
+import jakarta.enterprise.context.ApplicationScoped;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Placeholder storage adapter: logs the generated report instead of persisting it.
+ *
+ * <p>In the cloud this is replaced by an Azure Cosmos DB (NoSQL) adapter implementing
+ * the same {@link ReportStoragePort}; the application layer stays unchanged.</p>
+ */
+@ApplicationScoped
+public class LoggingReportStorageAdapter implements ReportStoragePort {
+
+    private static final Logger log = LoggerFactory.getLogger(LoggingReportStorageAdapter.class);
+
+    @Override
+    public void store(WeeklyReport report) {
+        // TODO(cloud): persist to Azure Cosmos DB.
+        log.info("[NoSQL placeholder] storing weekly report: {}", report);
+    }
+}

@@ -1,0 +1,100 @@
+# ============================================================================
+# Local stack for the rate-me feedback platform.
+#
+#   docker compose up -d postgres mailhog      # dependencies only (run apps via mvn)
+#   docker compose up -d --build               # everything (postgres, mailhog, services)
+#
+# The auth-service lives in another repository (cheffy-microservices) and is NOT built
+# here. Run it separately on port 8085 (see the commented block at the bottom) so the
+# feedback-service can register users and validate JWTs.
+# ============================================================================
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: rate-me-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-feedback}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # SMTP server + web UI (http://localhost:8025) to inspect outgoing e-mails.
+  mailhog:
+    image: mailhog/mailhog
+    container_name: rate-me-mailhog
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # web UI
+
+  feedback-service:
+    build:
+      context: .
+      dockerfile: feedback-service/src/main/docker/Dockerfile.jvm
+    container_name: rate-me-feedback-service
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-feedback}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      MAIL_HOST: mailhog
+      MAIL_PORT: "1025"
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@rate-me.local}
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL:-http://host.docker.internal:8085}
+      AUTH_JWKS_URL: ${AUTH_JWKS_URL:-http://host.docker.internal:8085/.well-known/jwks.json}
+      JWT_ISSUER: ${JWT_ISSUER:-cheffy-auth}
+    ports:
+      - "8086:8086"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  report-service:
+    build:
+      context: .
+      dockerfile: report-service/src/main/docker/Dockerfile.jvm
+    container_name: rate-me-report-service
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-feedback}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      MAIL_HOST: mailhog
+      MAIL_PORT: "1025"
+      REPORT_EMAIL: ${REPORT_EMAIL:-admin@rate-me.local}
+    ports:
+      - "8087:8087"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+
+  # --- auth-service (external; build from the cheffy-microservices repo) ---------------
+  # auth-service:
+  #   build:
+  #     context: ../cheffy-microservices/auth-service
+  #   ports:
+  #     - "8085:8085"
+  #   environment:
+  #     DB_HOST: postgres
+  #     DB_NAME: authdb
+  #     POSTGRES_PASSWORD: postgres
+  #     JWT_ISSUER: cheffy-auth
+  #     JWT_EXPIRATION: "3600"
+  #     PRIVATE_KEY_PATH: /keys/private.pem
+  #     PUBLIC_KEY_PATH: /keys/public.pem
+  #     KEY_DIR: /keys
+
+volumes:
+  pgdata:

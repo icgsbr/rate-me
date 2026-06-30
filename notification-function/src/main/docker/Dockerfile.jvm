@@ -1,0 +1,16 @@
+# Multi-stage JVM image for notification-function (scaffold).
+# Build context is the repository ROOT:
+#   docker build -f notification-function/src/main/docker/Dockerfile.jvm .
+
+# --- Build stage ---
+FROM maven:3.9-eclipse-temurin-21 AS build
+WORKDIR /build
+COPY . .
+RUN mvn -B -pl notification-function -am package -DskipTests
+
+# --- Runtime stage ---
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+COPY --from=build /build/notification-function/target/quarkus-app/ ./
+EXPOSE 8088
+ENTRYPOINT ["java", "-jar", "quarkus-run.jar"]
