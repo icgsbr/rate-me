@@ -2,6 +2,7 @@ package br.com.fiap.feedback.adapter.input.web.error;
 
 import br.com.fiap.feedback.domain.exception.ForbiddenOperationException;
 import br.com.fiap.feedback.domain.exception.RegistrationException;
+import br.com.fiap.feedback.domain.exception.RegistrationRejectedException;
 import br.com.fiap.feedback.domain.exception.UserNotFoundException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
@@ -61,6 +62,16 @@ public final class DomainExceptionMappers {
             log.error("Registration failed: {}", e.getMessage());
             return Response.status(Response.Status.BAD_GATEWAY)
                     .entity(new ErrorResponse("registration_failed", e.getMessage()))
+                    .build();
+        }
+    }
+
+    @Provider
+    public static class RegistrationRejectedMapper implements ExceptionMapper<RegistrationRejectedException> {
+        @Override
+        public Response toResponse(RegistrationRejectedException e) {
+            return Response.status(e.getStatus())
+                    .entity(new ErrorResponse("registration_rejected", e.getMessage()))
                     .build();
         }
     }
