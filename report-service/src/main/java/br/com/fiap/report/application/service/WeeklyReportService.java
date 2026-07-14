@@ -54,6 +54,14 @@ public class WeeklyReportService implements GenerateWeeklyReportUseCase {
     }
 
     @Override
+    public WeeklyReport previewLastWeek() {
+        OffsetDateTime to = OffsetDateTime.now();
+        OffsetDateTime from = to.minusDays(DEFAULT_PERIOD_DAYS);
+        log.info("Previewing weekly report for period {} .. {}", from, to);
+        return buildReport(from, to, feedbackQuery.findBetween(from, to));
+    }
+
+    @Override
     public WeeklyReport generate(OffsetDateTime from, OffsetDateTime to) {
         log.info("Generating weekly report for period {} .. {}", from, to);
 
