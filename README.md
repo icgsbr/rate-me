@@ -51,8 +51,8 @@ role claim, so the role is resolved locally (admin table first, then student) fr
 ### report-service (8087)
 | Method | Route | Description |
 |---|---|---|
-| `POST` | `/reports/weekly/run` | build last-7-days report, e-mail it, return JSON |
-| `GET` | `/reports/weekly` | same (preview) |
+| `POST` | `/reports/weekly/run` | build last-7-days report, store it, e-mail it, return JSON |
+| `GET` | `/reports/weekly` | preview last-7-days report as JSON, without storage or e-mail |
 
 Report metrics: evaluations per day, low-score count + student ids, average evaluations
 per week, average score over the period. The weekly cadence is a disabled
