@@ -4,9 +4,10 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 /** Feedback submission payload for {@code POST /feedback}. */
 public record FeedbackRequest(
-        @NotBlank String description,
+        @NotBlank @Size(max = 255) String description,
         @NotNull @Min(0) @Max(10) Integer score
 ) {}
