@@ -26,7 +26,7 @@ public class WeeklyReportScheduler {
     }
 
     // Disabled by default ("off"); set app.report.cron to e.g. "0 0 8 ? * MON" to enable.
-    @Scheduled(cron = "{app.report.cron}")
+    @Scheduled(cron = "{app.report.cloud.cron}")
     void runWeekly() {
         log.info("Scheduled weekly report triggered");
         generateReport.generateLastWeek();
