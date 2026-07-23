@@ -1,18 +1,27 @@
-# Multi-stage JVM image for report-service.
-# Build context is the repository ROOT:
-#   docker build -f report-service/src/main/docker/Dockerfile.jvm .
-
 # --- Build stage ---
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
+
 COPY . .
-RUN mvn -B -pl report-service -am package -DskipTests
+
+# Compila o projeto (agora o plugin do Azure vai gerar a pasta correta)
+RUN mvn -B -pl report-service -am clean package -DskipTests
 
 # --- Runtime stage ---
-FROM eclipse-temurin:21-jre
-WORKDIR /app
-COPY --from=build /build/report-service/target/quarkus-app/ ./
+# CRÍTICO: Imagem base oficial do Azure Functions (e não eclipse-temurin)
+FROM mcr.microsoft.com/azure-functions/java:4-java21
+WORKDIR /home/site/wwwroot
+
+# Configurações obrigatórias para o motor do Azure Functions
+ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
+    AzureFunctionsJobHost__Logging__Console__IsEnabled=true \
+    FUNCTIONS_WORKER_RUNTIME=java
+
+# Copia a estrutura especial gerada pelo azure-functions-maven-plugin
+COPY --from=build /build/report-service/target/azure-functions/report-service/ ./
+
+# Mantendo o seu Application Insights
 ADD https://github.com/microsoft/ApplicationInsights-Java/releases/download/3.7.8/applicationinsights-agent-3.7.8.jar /app/applicationinsights-agent.jar
 ENV APPLICATIONINSIGHTS_ROLE_NAME="report-service"
-EXPOSE 8087
-ENTRYPOINT ["java", "-javaagent:/app/applicationinsights-agent.jar", "-jar", "quarkus-run.jar"]
+
+# Não precisamos de ENTRYPOINT ou EXPOSE! A imagem da Microsoft já cuida disso.
