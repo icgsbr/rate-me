@@ -15,7 +15,7 @@ RUN mkdir -p /build/out && \
 
 # --- Stage 2: Runtime (IMAGEM SLIM) ---
 # A tag -slim remove centenas de MB de lixo do sistema operacional
-FROM mcr.microsoft.com/azure-functions/java:4-java21-slim
+FROM mcr.microsoft.com/azure-functions/java:4-java21
 WORKDIR /home/site/wwwroot
 
 ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
