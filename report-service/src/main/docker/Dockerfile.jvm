@@ -1,25 +1,30 @@
-# --- Build stage ---
+# Multi-stage JVM image para report-service (Azure Functions)
+
+# --- Stage 1: Build ---
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
 
 COPY . .
 
-# Compila o projeto apenas com o motor do Quarkus (que gerará a pasta azure-functions automaticamente)
 RUN mvn -B -pl report-service -am clean package -DskipTests
 
-# --- Runtime stage ---
-# CRÍTICO: Imagem base oficial do Azure Functions
-FROM mcr.microsoft.com/azure-functions/java:4-java21
+# ESTRATÉGIA OTIMIZADA:
+# Busca apenas o diretório gerado (ignora .zip) e copia o conteúdo para /build/out
+RUN mkdir -p /build/out && \
+    find /build/report-service/target/azure-functions/ -mindepth 1 -maxdepth 1 -type d -exec cp -r {}/. /build/out/ \;
+
+# --- Stage 2: Runtime (IMAGEM SLIM) ---
+# A tag -slim remove centenas de MB de lixo do sistema operacional
+FROM mcr.microsoft.com/azure-functions/java:4-java21-slim
 WORKDIR /home/site/wwwroot
 
-# Configurações obrigatórias para o motor do Azure Functions
 ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
     AzureFunctionsJobHost__Logging__Console__IsEnabled=true \
     FUNCTIONS_WORKER_RUNTIME=java
 
-# Copia a estrutura especial gerada nativamente pelo Quarkus
-COPY --from=build /build/report-service/target/azure-functions/report-service/ ./
+# Copia apenas os artefatos puros do diretório temporário
+COPY --from=build /build/out/ ./
 
-# Mantendo o seu Application Insights
+# Agente do Application Insights
 ADD https://github.com/microsoft/ApplicationInsights-Java/releases/download/3.7.8/applicationinsights-agent-3.7.8.jar /app/applicationinsights-agent.jar
 ENV APPLICATIONINSIGHTS_ROLE_NAME="report-service"

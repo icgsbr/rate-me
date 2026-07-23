@@ -27,7 +27,7 @@ public class ReportFunction {
      */
     @FunctionName("generateWeeklyReport")
     public void execute(
-            @TimerTrigger(name = "timerInfo", schedule = "%app.report.cloud.cron%") String timerInfo,
+            @TimerTrigger(name = "timerInfo", schedule = "%CRON_SCHEDULE%") String timerInfo,
             final ExecutionContext context) {
         log.info("Gatilho de tempo da Azure Function recebido: {}", timerInfo);
         generateReport.generateLastWeek();
