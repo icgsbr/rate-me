@@ -28,3 +28,5 @@ COPY --from=build /build/out/ ./
 # Agente do Application Insights
 ADD https://github.com/microsoft/ApplicationInsights-Java/releases/download/3.7.8/applicationinsights-agent-3.7.8.jar /app/applicationinsights-agent.jar
 ENV APPLICATIONINSIGHTS_ROLE_NAME="report-service"
+
+EXPOSE 8087
