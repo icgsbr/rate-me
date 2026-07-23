@@ -4,11 +4,11 @@ WORKDIR /build
 
 COPY . .
 
-# Compila o projeto (agora o plugin do Azure vai gerar a pasta correta)
+# Compila o projeto apenas com o motor do Quarkus (que gerará a pasta azure-functions automaticamente)
 RUN mvn -B -pl report-service -am clean package -DskipTests
 
 # --- Runtime stage ---
-# CRÍTICO: Imagem base oficial do Azure Functions (e não eclipse-temurin)
+# CRÍTICO: Imagem base oficial do Azure Functions
 FROM mcr.microsoft.com/azure-functions/java:4-java21
 WORKDIR /home/site/wwwroot
 
@@ -17,11 +17,9 @@ ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
     AzureFunctionsJobHost__Logging__Console__IsEnabled=true \
     FUNCTIONS_WORKER_RUNTIME=java
 
-# Copia a estrutura especial gerada pelo azure-functions-maven-plugin
+# Copia a estrutura especial gerada nativamente pelo Quarkus
 COPY --from=build /build/report-service/target/azure-functions/report-service/ ./
 
 # Mantendo o seu Application Insights
 ADD https://github.com/microsoft/ApplicationInsights-Java/releases/download/3.7.8/applicationinsights-agent-3.7.8.jar /app/applicationinsights-agent.jar
 ENV APPLICATIONINSIGHTS_ROLE_NAME="report-service"
-
-# Não precisamos de ENTRYPOINT ou EXPOSE! A imagem da Microsoft já cuida disso.
