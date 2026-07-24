@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
+    <!--
+        Note on Application Insights: the Functions host forwards console output to
+        App Insights and the Java agent instruments logback directly, so log events can
+        appear twice. Microsoft's workaround is a <filter level="OFF"> on this appender,
+        but that also silences the container's stdout - which is the only log stream
+        available when troubleshooting a container that fails to start. We keep console
+        logging on deliberately and accept the duplicate traces.
+    -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
@@ -10,5 +18,7 @@
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
     </root>
+
+    <logger name="br.com.fiap.notification" level="DEBUG"/>
 
 </configuration>

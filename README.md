@@ -15,7 +15,11 @@ JWKS endpoint for distributed validation.
 |---|---|---|---|
 | `feedback-service` | 8086 | functional | registration (via auth-service), feedback submission/listing, low-score e-mail alert |
 | `report-service` | 8087 | functional | weekly report (metrics + e-mail); reads the feedback DB read-only |
-| `notification-function` | 8088 | scaffold | critical-event alert — real trigger is Azure Monitor (cloud only) |
+| `notification-function` | n/a | functional | **Azure Function**: escalates a critical event to the administrators by e-mail |
+
+`notification-function` is packaged as an Azure Function rather than a standalone web app, so
+it has no port of its own — the Functions host owns the listener. See
+[Azure Function](#notification-function-azure-function) below.
 
 ## Architecture (hexagonal)
 
@@ -57,6 +61,26 @@ role claim, so the role is resolved locally (admin table first, then student) fr
 Report metrics: evaluations per day, low-score count + student ids, average evaluations
 per week, average score over the period. The weekly cadence is a disabled
 `@Scheduled` job (`app.report.cron`) standing in for the future Azure Timer Trigger.
+
+### notification-function (Azure Function)
+| Method | Route | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/health` | anonymous | liveness probe |
+| `POST` | `/api/notifications/critical` | function key | escalate a critical event by e-mail |
+
+The alert payload carries exactly the three fields the challenge asks for:
+
+```json
+{ "descricao": "Database unreachable", "urgencia": "CRITICA", "dataEnvio": "2026-07-24T00:30:00Z" }
+```
+
+`urgencia` is one of `BAIXA`, `MEDIA`, `ALTA`, `CRITICA`; `dataEnvio` is optional and
+defaults to the moment the event is received. The key goes in the `x-functions-key` header
+(or `?code=`), which is the access governance for this endpoint.
+
+Built as a container on `mcr.microsoft.com/azure-functions/java:4-java21-appservice` and
+deployed to the Function App `rate-me-notification-function`; the image lives in
+`ratemeacr.azurecr.io/notification-function`.
 
 ## Running locally
 
@@ -109,14 +133,36 @@ curl -X POST localhost:8087/reports/weekly/run
   modules (SonarQube optional, behind `SONAR_TOKEN`).
 - **`.github/workflows/cd.yml`** — on push to `main`: per-service matrix builds and pushes
   Docker images to Docker Hub. Azure deployment steps are commented placeholders.
+- **`.github/workflows/notification-function-cd.yml`** — on push to `main` touching
+  `notification-function/`: builds the image, pushes both `:latest` and `:<commit>` to
+  `ratemeacr` and restarts the Function App.
 
-## Cloud readiness (next phase)
+## Cloud deployment
 
-The structure is ready for the serverless/cloud pieces without business-logic changes:
+Everything runs in the resource group `rg-dev-servless-FIAP` (East US):
 
-- **report-service** → Azure **Timer Trigger** Function (weekly); `ReportStoragePort` →
-  **Azure Cosmos DB** (NoSQL); `ReportNotificationPort`/`NotificationPort` → **Azure
+| Component | Azure resource | Image |
+|---|---|---|
+| auth-service | Container App `auth-service-fiap` | `ratemeacr.azurecr.io/auth-service:observability` |
+| feedback-service | Container App `feedback-service-fiap` | `ratemeacr.azurecr.io/feedback-service:observability` |
+| report-service | Function App `rate-me-report-service` (Timer Trigger) | `ratemeacr.azurecr.io/report-service:latest` |
+| notification-function | Function App `rate-me-notification-function` (HTTP Trigger) | `ratemeacr.azurecr.io/notification-function:latest` |
+
+Both Function Apps share the `rate-me-dedicated-plan` (B1). A container image on Azure
+Functions requires a Premium or Dedicated plan — Flex Consumption does not support custom
+containers — and reusing the existing plan keeps the extra cost at zero.
+
+### Monitoring
+
+Each service has its own Application Insights component, all wired to the shared Log
+Analytics workspace `workspacergdevservlessfiapb71d`. Instrumentation is the Application
+Insights **Java agent 3.7.8** baked into every image, so telemetry is collected without
+touching business code; `APPLICATIONINSIGHTS_ROLE_NAME` is what separates the services in
+the portal. On the Function Apps the agent is attached through the `JAVA_OPTS` app setting,
+which is the documented mechanism on a Dedicated plan.
+
+### Remaining cloud work
+
+- `ReportStoragePort` → **Azure Cosmos DB** (NoSQL); the mailer adapters → **Azure
   Communication Services**.
-- **notification-function** → Azure **Function** fired by **Azure Monitor + Application
-  Insights** on `error` logs (the MDC-structured logs are the foundation for this).
-- Secrets (admin e-mail, SMTP, DB) → **Azure Key Vault**.
+- SMTP credentials → **Azure Key Vault** (the database credentials already are).
