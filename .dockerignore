@@ -1,0 +1,9 @@
+# The images build from the repository root and run Maven inside the builder stage, so the
+# local build output and VCS metadata are dead weight in the context - and a real slowdown
+# for `az acr build`, which uploads the context over the network.
+.git
+.github
+.idea
+**/target
+*.md
+docker-compose.yml

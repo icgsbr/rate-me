@@ -8,5 +8,12 @@ import br.com.fiap.notification.domain.CriticalNotification;
  */
 public interface AlertSenderPort {
 
+    /** Sends to the default administrator address. */
     void sendCriticalAlert(CriticalNotification notification);
+
+    /**
+     * Sends to an explicit address. The log scan uses this so its alerts can be routed to a
+     * different mailbox than the ones raised through {@code POST /api/notifications/critical}.
+     */
+    void sendCriticalAlert(CriticalNotification notification, String recipient);
 }

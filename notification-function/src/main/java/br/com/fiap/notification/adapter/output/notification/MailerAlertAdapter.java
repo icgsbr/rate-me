@@ -35,6 +35,11 @@ public class MailerAlertAdapter implements AlertSenderPort {
 
     @Override
     public void sendCriticalAlert(CriticalNotification notification) {
+        sendCriticalAlert(notification, adminEmail);
+    }
+
+    @Override
+    public void sendCriticalAlert(CriticalNotification notification, String recipient) {
         String subject = "[%s] Critical event on the rate-me platform".formatted(notification.urgencia());
 
         // The challenge requires the alert to carry: description, urgency and submission date.
@@ -49,7 +54,7 @@ public class MailerAlertAdapter implements AlertSenderPort {
                 TIMESTAMP.format(notification.dataEnvio()),
                 notification.descricao());
 
-        mailer.send(Mail.withText(adminEmail, subject, body));
-        log.info("Critical alert e-mail sent to {} (urgencia={})", adminEmail, notification.urgencia());
+        mailer.send(Mail.withText(recipient, subject, body));
+        log.info("Critical alert e-mail sent to {} (urgencia={})", recipient, notification.urgencia());
     }
 }
