@@ -12,13 +12,35 @@
 
     <artifactId>notification-function</artifactId>
     <name>notification-function</name>
-    <description>Scaffold for the critical-event alert (future Azure Function via Azure Monitor + App Insights)</description>
+    <description>Critical-event alert delivered as an Azure Function (HTTP trigger + e-mail)</description>
 
     <dependencies>
-        <!-- Minimal REST so the module builds and starts; the real trigger is cloud-only. -->
+        <!--
+            Azure Functions runtime integration: lets the trigger classes below be plain
+            Azure Functions (@FunctionName/@HttpTrigger) while still using CDI injection.
+            Packaging produces target/azure-functions/${quarkus.azure-functions.app-name}/,
+            which is what the Docker image copies into /home/site/wwwroot.
+        -->
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-rest</artifactId>
+            <artifactId>quarkus-azure-functions</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.azure.functions</groupId>
+            <artifactId>azure-functions-java-library</artifactId>
+            <version>${azure-functions-java-library.version}</version>
+        </dependency>
+
+        <!-- JSON (de)serialization of the alert payload -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-jackson</artifactId>
+        </dependency>
+
+        <!-- Delivering the alert by e-mail -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-mailer</artifactId>
         </dependency>
 
         <!-- Logback + SLF4J -->
