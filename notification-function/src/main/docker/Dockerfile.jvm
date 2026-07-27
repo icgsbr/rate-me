@@ -22,6 +22,10 @@ COPY --from=build /build/notification-function/target/azure-functions/rate-me-no
 ADD https://github.com/microsoft/ApplicationInsights-Java/releases/download/3.7.8/applicationinsights-agent-3.7.8.jar /home/site/wwwroot/applicationinsights-agent.jar
 RUN chmod 644 /home/site/wwwroot/applicationinsights-agent.jar
 
+# LOG_SCAN_SCHEDULE is resolved by the Functions host to bind the scanFeedbackErrors timer,
+# so the function fails to register if it is missing. The app setting of the same name
+# overrides this default; it lives here so the image is runnable on its own.
 ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
     AzureFunctionsJobHost__Logging__Console__IsEnabled=true \
-    APPLICATIONINSIGHTS_ROLE_NAME=notification-function
+    APPLICATIONINSIGHTS_ROLE_NAME=notification-function \
+    LOG_SCAN_SCHEDULE="0 */5 * * * *"
