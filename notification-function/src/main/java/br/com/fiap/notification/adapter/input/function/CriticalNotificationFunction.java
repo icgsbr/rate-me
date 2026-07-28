@@ -21,16 +21,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 
-/**
- * HTTP-triggered Azure Function that escalates a critical event to the administrators.
- *
- * <p>Reachable at {@code POST /api/notifications/critical}. The trigger is protected with
- * {@link AuthorizationLevel#FUNCTION}, so callers must present a function key
- * ({@code x-functions-key} header or {@code ?code=} query parameter).</p>
- *
- * <p>Its single responsibility is the alert; it deliberately knows nothing about feedback,
- * reports or the database.</p>
- */
 public class CriticalNotificationFunction {
 
     private static final Logger log = LoggerFactory.getLogger(CriticalNotificationFunction.class);
@@ -68,8 +58,6 @@ public class CriticalNotificationFunction {
         try {
             sendNotification.send(notification);
         } catch (Exception e) {
-            // Delivery failed (SMTP down, bad credentials, ...): surface it instead of
-            // pretending the administrators were warned.
             log.error("Failed to deliver critical alert", e);
             return json(request, HttpStatus.INTERNAL_SERVER_ERROR,
                     new ErrorResponse("delivery_failed", e.getMessage()));
@@ -92,8 +80,6 @@ public class CriticalNotificationFunction {
                     .body(objectMapper.writeValueAsString(body))
                     .build();
         } catch (Exception e) {
-            // Serializing our own small DTOs cannot realistically fail; keep the function
-            // responsive if it somehow does.
             log.error("Failed to serialize response", e);
             return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR)
                     .header("Content-Type", "application/json")

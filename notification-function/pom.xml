@@ -15,12 +15,6 @@
     <description>Critical-event alert delivered as an Azure Function (HTTP trigger + e-mail)</description>
 
     <dependencies>
-        <!--
-            Azure Functions runtime integration: lets the trigger classes below be plain
-            Azure Functions (@FunctionName/@HttpTrigger) while still using CDI injection.
-            Packaging produces target/azure-functions/${quarkus.azure-functions.app-name}/,
-            which is what the Docker image copies into /home/site/wwwroot.
-        -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-azure-functions</artifactId>
@@ -31,26 +25,22 @@
             <version>${azure-functions-java-library.version}</version>
         </dependency>
 
-        <!-- JSON (de)serialization of the alert payload -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jackson</artifactId>
         </dependency>
 
-        <!-- Delivering the alert by e-mail -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-mailer</artifactId>
         </dependency>
 
-        <!-- Logback + SLF4J -->
         <dependency>
             <groupId>io.quarkiverse.logging.logback</groupId>
             <artifactId>quarkus-logging-logback</artifactId>
             <version>${quarkus-logging-logback.version}</version>
         </dependency>
 
-        <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
