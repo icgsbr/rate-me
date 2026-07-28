@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import java.time.format.DateTimeFormatter;
 import java.util.StringJoiner;
 
-/** E-mails the weekly report over SMTP (MailHog in development). */
 @ApplicationScoped
 public class MailerReportAdapter implements ReportNotificationPort {
 
@@ -35,7 +34,6 @@ public class MailerReportAdapter implements ReportNotificationPort {
         log.info("Weekly report e-mail sent to {}", recipient);
     }
 
-    /** Renders the report as a plain-text summary covering every required metric. */
     private String render(WeeklyReport report) {
         StringJoiner perDay = new StringJoiner("\n");
         report.evaluationsPerDay().forEach((day, count) ->

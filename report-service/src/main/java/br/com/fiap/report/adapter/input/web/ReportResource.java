@@ -8,11 +8,6 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
-/**
- * On-demand report endpoint, used to verify the flow locally (the production trigger is
- * the scheduled job / Azure Timer Trigger). POST dispatches the last-7-days report;
- * GET only previews the JSON without side effects.
- */
 @Path("/reports/weekly")
 @Produces(MediaType.APPLICATION_JSON)
 public class ReportResource {
