@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,18 +50,31 @@ public class AppInsightsLogQueryAdapter implements LogQueryPort {
     private final String apiKey;
     private final String roleName;
 
+    @Inject
     public AppInsightsLogQueryAdapter(
             ObjectMapper objectMapper,
             @ConfigProperty(name = "app.log-scan.insights-app-id") String appId,
             @ConfigProperty(name = "app.log-scan.insights-api-key") String apiKey,
             @ConfigProperty(name = "app.log-scan.role-name") String roleName) {
+        this(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build(),
+                objectMapper, appId, apiKey, roleName);
+    }
+
+    /**
+     * Visible for testing: lets a test supply a stubbed {@link HttpClient} instead of
+     * reaching the real Application Insights query API.
+     */
+    AppInsightsLogQueryAdapter(
+            HttpClient httpClient,
+            ObjectMapper objectMapper,
+            String appId,
+            String apiKey,
+            String roleName) {
+        this.httpClient = httpClient;
         this.objectMapper = objectMapper;
         this.appId = appId;
         this.apiKey = apiKey;
         this.roleName = roleName;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
-                .build();
     }
 
     @Override
