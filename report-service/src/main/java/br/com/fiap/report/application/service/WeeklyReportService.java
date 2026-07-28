@@ -20,12 +20,6 @@ import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-/**
- * Builds the weekly report from the feedback data and dispatches it.
- *
- * <p>Low scores are those at or below {@value #LOW_SCORE_THRESHOLD} (kept in sync with
- * the feedback-service rule).</p>
- */
 @ApplicationScoped
 public class WeeklyReportService implements GenerateWeeklyReportUseCase {
 
@@ -68,7 +62,6 @@ public class WeeklyReportService implements GenerateWeeklyReportUseCase {
         List<FeedbackRow> rows = feedbackQuery.findBetween(from, to);
         WeeklyReport report = buildReport(from, to, rows);
 
-        // Persist (NoSQL placeholder) and deliver the report.
         storage.store(report);
         notification.sendWeeklyReport(report);
 
@@ -80,7 +73,6 @@ public class WeeklyReportService implements GenerateWeeklyReportUseCase {
     private WeeklyReport buildReport(OffsetDateTime from, OffsetDateTime to, List<FeedbackRow> rows) {
         long total = rows.size();
 
-        // Evaluations per calendar day (UTC), kept ordered for readable output.
         Map<LocalDate, Long> perDay = rows.stream()
                 .collect(Collectors.groupingBy(
                         r -> r.reviewDate().atZoneSameInstant(ZoneOffset.UTC).toLocalDate(),
@@ -101,7 +93,6 @@ public class WeeklyReportService implements GenerateWeeklyReportUseCase {
                 .average()
                 .orElse(0.0);
 
-        // Number of (partial) weeks in the period, at least one.
         long days = Math.max(1, Duration.between(from, to).toDays());
         double weeks = Math.max(1.0, days / 7.0);
         double avgPerWeek = total / weeks;

@@ -1,30 +1,16 @@
-# Azure Functions image for notification-function.
-# Build context is the repository ROOT:
-#   docker build -f notification-function/src/main/docker/Dockerfile.jvm .
 
-# --- Build stage ---
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
 COPY . .
 RUN mvn -B -pl notification-function -am package -DskipTests
 
-# --- Runtime stage ---
-# The Functions host owns the process and listens on port 80, so there is no ENTRYPOINT
-# of our own here; the app is just dropped into the script root the host reads.
-# The "-appservice" flavour is the one meant for Dedicated (App Service plan) hosting.
 FROM mcr.microsoft.com/azure-functions/java:4-java21-appservice
 
 COPY --from=build /build/notification-function/target/azure-functions/rate-me-notification-function/ /home/site/wwwroot/
 
-# Application Insights Java agent, same version used by the other services. It is attached
-# to the Java worker through the JAVA_OPTS app setting (the documented way on a Dedicated
-# plan), not here, because the entrypoint belongs to the Functions host.
 ADD https://github.com/microsoft/ApplicationInsights-Java/releases/download/3.7.8/applicationinsights-agent-3.7.8.jar /home/site/wwwroot/applicationinsights-agent.jar
 RUN chmod 644 /home/site/wwwroot/applicationinsights-agent.jar
 
-# LOG_SCAN_SCHEDULE is resolved by the Functions host to bind the scanFeedbackErrors timer,
-# so the function fails to register if it is missing. The app setting of the same name
-# overrides this default; it lives here so the image is runnable on its own.
 ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
     AzureFunctionsJobHost__Logging__Console__IsEnabled=true \
     APPLICATIONINSIGHTS_ROLE_NAME=notification-function \

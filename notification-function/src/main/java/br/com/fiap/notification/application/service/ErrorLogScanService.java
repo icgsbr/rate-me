@@ -15,20 +15,12 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-/**
- * Turns a window of the monitored service's error logs into a single administrator alert.
- *
- * <p>One e-mail per scan, never one per record: a service stuck in an error loop would
- * otherwise bury the administrator's inbox, and the alert is about "something is wrong
- * over there", not about each individual stack trace.</p>
- */
 @ApplicationScoped
 public class ErrorLogScanService implements ScanServiceErrorsUseCase {
 
     private static final Logger log = LoggerFactory.getLogger(ErrorLogScanService.class);
     private static final DateTimeFormatter TIMESTAMP = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
-    /** How many records are spelled out in the e-mail; the rest are counted in the header. */
     private static final int MAX_DETAILED = 10;
 
     private final LogQueryPort logQuery;
@@ -77,8 +69,6 @@ public class ErrorLogScanService implements ScanServiceErrorsUseCase {
             text.append("%n... and %d more.%n".formatted(errors.size() - MAX_DETAILED));
         }
 
-        // CriticalNotification rejects anything longer, and the tail of a long list is the
-        // least interesting part of it.
         String description = text.toString();
         return description.length() > CriticalNotification.MAX_DESCRICAO_LENGTH
                 ? description.substring(0, CriticalNotification.MAX_DESCRICAO_LENGTH - 4) + "..."

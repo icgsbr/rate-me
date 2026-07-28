@@ -22,16 +22,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Reads the monitored service's error logs from the Application Insights query API.
- *
- * <p>Authentication is an Application Insights <em>API key</em> ({@code X-Api-Key}) rather
- * than a managed identity, because granting a role assignment needs Owner on the
- * subscription and the project only has Contributor on the resource group.</p>
- *
- * <p>Uses the JDK HTTP client on purpose: one small POST does not justify pulling a REST
- * client extension into a function that has to cold-start.</p>
- */
 @ApplicationScoped
 public class AppInsightsLogQueryAdapter implements LogQueryPort {
 
@@ -40,17 +30,8 @@ public class AppInsightsLogQueryAdapter implements LogQueryPort {
     private static final String QUERY_URL = "https://api.applicationinsights.io/v1/apps/%s/query";
     private static final DateTimeFormatter KQL_TIMESTAMP = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
-    /** Ceiling on how many records one alert e-mail reports on. */
     private static final int MAX_ROWS = 50;
 
-    /**
-     * {@code traces} carries the ERROR-level log statements (severityLevel 3 = ERROR,
-     * 4 = CRITICAL); {@code exceptions} carries what escaped without ever being logged,
-     * which is how an unmapped 500 shows up. Both are needed to see every error.
-     *
-     * <p>The column is {@code errorKind}, not {@code kind}: {@code kind} is a KQL keyword
-     * and the query is rejected with a syntax error.</p>
-     */
     private static final String KQL = """
             union
               (traces     | where severityLevel >= 3 | extend errorKind = "trace",     detail = message),
@@ -109,8 +90,6 @@ public class AppInsightsLogQueryAdapter implements LogQueryPort {
         }
 
         if (response.statusCode() != 200) {
-            // The body carries the reason (bad key, unknown app id, malformed KQL); it is
-            // small and contains no telemetry, so it is safe to log.
             throw new LogQueryException("Application Insights query API returned %d: %s"
                     .formatted(response.statusCode(), response.body()));
         }
@@ -118,11 +97,6 @@ public class AppInsightsLogQueryAdapter implements LogQueryPort {
         return parse(response.body());
     }
 
-    /**
-     * The API answers with {@code tables[].columns[]} + {@code tables[].rows[]}, i.e. rows are
-     * positional arrays. Column positions are resolved by name so a change in the projection
-     * cannot silently shift the fields.
-     */
     private List<ServiceErrorLog> parse(String body) {
         List<ServiceErrorLog> errors = new ArrayList<>();
         try {

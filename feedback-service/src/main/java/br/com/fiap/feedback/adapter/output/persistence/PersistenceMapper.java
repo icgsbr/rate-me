@@ -1,9 +1,11 @@
 package br.com.fiap.feedback.adapter.output.persistence;
 
 import br.com.fiap.feedback.adapter.output.persistence.entity.AdminEntity;
+import br.com.fiap.feedback.adapter.output.persistence.entity.CourseEntity;
 import br.com.fiap.feedback.adapter.output.persistence.entity.FeedbackEntity;
 import br.com.fiap.feedback.adapter.output.persistence.entity.StudentEntity;
 import br.com.fiap.feedback.domain.Admin;
+import br.com.fiap.feedback.domain.Course;
 import br.com.fiap.feedback.domain.Feedback;
 import br.com.fiap.feedback.domain.Student;
 
@@ -45,6 +47,22 @@ final class PersistenceMapper {
         e.setName(a.getName());
         e.setAuthId(a.getAuthId());
         e.setRole(a.getRole());
+        return e;
+    }
+
+    static Course toDomain(CourseEntity e) {
+        return Course.builder()
+                .id(e.getId())
+                .name(e.getName())
+                .description(e.getDescription())
+                .build();
+    }
+
+    static CourseEntity toEntity(Course c) {
+        CourseEntity e = new CourseEntity();
+        e.setId(c.getId());
+        e.setName(c.getName());
+        e.setDescription(c.getDescription());
         return e;
     }
 

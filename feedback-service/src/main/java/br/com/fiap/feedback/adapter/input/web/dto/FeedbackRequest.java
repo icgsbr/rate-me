@@ -8,5 +8,6 @@ import jakarta.validation.constraints.Size;
 
 public record FeedbackRequest(
         @NotBlank @Size(max = 255) String description,
-        @NotNull @Min(0) @Max(10) Integer score
+        @NotNull @Min(0) @Max(10) Integer score,
+        @NotNull UUID courseId
 ) {}

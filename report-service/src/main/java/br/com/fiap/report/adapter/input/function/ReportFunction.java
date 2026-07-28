@@ -9,9 +9,6 @@ import jakarta.inject.Named;
 
 import java.util.logging.Level;
 
-/**
- * Ponto de entrada da Azure Function para acionar o relatório semanal.
- */
 @Named("report")
 public class ReportFunction {
 

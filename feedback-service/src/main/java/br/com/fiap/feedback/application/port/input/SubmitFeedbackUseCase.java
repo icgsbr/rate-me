@@ -11,6 +11,7 @@ public interface SubmitFeedbackUseCase {
     record SubmitFeedbackCommand(
             UUID studentId,
             String description,
-            int score
+            int score,
+            UUID courseId
     ) {}
 }
