@@ -7,7 +7,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.time.OffsetDateTime;
 import java.util.List;
 
-/** Panache-backed read-only implementation of {@link FeedbackQueryPort}. */
 @ApplicationScoped
 public class FeedbackQueryAdapter
         implements PanacheRepository<FeedbackReadEntity>, FeedbackQueryPort {
