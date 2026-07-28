@@ -1,237 +1,241 @@
-# rate-me — feedback platform
+# rate-me — plataforma de feedback
 
-Students rate the lessons they attend, administrators get told when something goes wrong and
-receive a periodic report with the numbers. Built for the FIAP/POSTECH Tech Challenge (Fase 4)
-with **Java 21 + Quarkus 3.15**, hexagonal architecture, **PostgreSQL + Flyway**, RS256 **JWT**
-validated against a remote JWKS, and two **Azure Functions** for everything that is triggered by
-time rather than by a user.
+Alunos avaliam as aulas que assistem, administradores são avisados quando algo vai mal e recebem
+um relatório periódico com os números. Construído para o Tech Challenge da Fase 4 (FIAP/POSTECH)
+com **Java 21 + Quarkus 3.15**, arquitetura hexagonal, **PostgreSQL + Flyway**, **JWT** RS256
+validado contra um JWKS remoto e duas **Azure Functions** para tudo que é disparado por tempo em
+vez de por um usuário.
 
-## Architecture at a glance
+## Arquitetura em um relance
 
 ```
              ┌──────────────────┐        ┌──────────────────────────┐
- student ───▶│ feedback-service │───────▶│  PostgreSQL (feedback)   │
+ aluno   ───▶│ feedback-service │───────▶│  PostgreSQL (feedback)   │
  admin   ───▶│  Container App   │        └──────────────────────────┘
-             └────────┬─────────┘                     ▲ read-only
-                      │ score <= 1                    │
+             └────────┬─────────┘                     ▲ somente leitura
+                      │ nota <= 1                     │
                       ▼ e-mail                ┌───────┴──────────┐
-                  administrator ◀─── e-mail ──│  report-service  │ timer
+                 administrador ◀─── e-mail ───│  report-service  │ timer
                       ▲                       │   Function App   │
                       │ e-mail                └──────────────────┘
              ┌────────┴───────────────┐
              │ notification-function  │ timer + HTTP
-             │      Function App      │◀── queries Application Insights
+             │      Function App      │◀── consulta o Application Insights
              └────────────────────────┘
 ```
 
-Each module is cut the same way: `domain` holds plain models with no framework in them,
-`application` holds the use cases plus the input/output ports, and `adapter` holds everything that
-talks to the outside world (REST resources, function triggers, JPA, SMTP, the auth REST client,
-the Application Insights query client). Dependencies only point inward, which is why the SMTP
-notifier or the report storage can be replaced without the use cases noticing, and why the whole
-test suite runs with no database and no mail server.
+Os módulos seguem o mesmo corte interno: `domain` guarda modelos puros, sem framework;
+`application` guarda os casos de uso e as portas de entrada e saída; `adapter` guarda tudo que
+conversa com o mundo externo (recursos REST, gatilhos de função, JPA, SMTP, o cliente REST do
+auth-service, o cliente de consulta do Application Insights). As dependências só apontam para
+dentro — é por isso que o notificador SMTP ou o armazenamento do relatório podem ser trocados sem
+que os casos de uso percebam, e por isso a suíte de testes inteira roda sem banco e sem servidor
+de e-mail.
 
-Authentication is delegated to an external **auth-service** (Spring Boot, repository
-`cheffy-microservices`, port 8085 locally). It registers users, issues RS256 tokens and publishes
-a JWKS endpoint the other services validate against.
+A autenticação é delegada a um **auth-service** externo (Spring Boot, repositório
+`cheffy-microservices`, porta 8085 localmente). Ele cadastra usuários, emite tokens RS256 e
+publica um endpoint JWKS contra o qual os demais serviços validam.
 
-## Modules
+## Módulos
 
-| Module | Runs as | Responsibility |
+| Módulo | Roda como | Responsabilidade |
 |---|---|---|
-| `feedback-service` | Container App (port 8086) | registration, course catalogue, feedback submission and listing, low-score alert |
-| `report-service` | Function App (Timer Trigger) | weekly metrics over the feedback data, stored and e-mailed |
-| `notification-function` | Function App (HTTP + Timer Trigger) | escalates a critical event by e-mail; sweeps the feedback-service error logs |
+| `feedback-service` | Container App (porta 8086) | cadastro, catálogo de cursos, submissão e listagem de avaliações, alerta de nota baixa |
+| `report-service` | Function App (Timer Trigger) | métricas do período sobre as avaliações, armazenadas e enviadas por e-mail |
+| `notification-function` | Function App (HTTP + Timer Trigger) | escala um evento crítico por e-mail; varre os logs de erro do feedback-service |
 
 ## Endpoints
 
 ### feedback-service
 
-| Method | Route | Who | Description |
+| Método | Rota | Quem | Descrição |
 |---|---|---|---|
-| `POST` | `/cadastro` | public | registers a student or admin: calls the auth-service and stores the returned `auth_id` |
-| `POST` | `/courses` | ADMIN | registers a course from `{name, description}` |
-| `GET` | `/courses` | any valid JWT | lists courses; this is where the `courseId` below comes from |
-| `POST` | `/feedback` | STUDENT | submits `{description, score, courseId}`; an unknown course is a 404, `score <= 1` sends the admin alert and sets `notified` |
-| `GET` | `/feedback` | STUDENT | lists the caller's own feedback |
-| `GET` | `/feedback?page=&size=` | ADMIN | lists all feedback, paginated (defaults `page=0`, `size=20`) |
+| `POST` | `/cadastro` | público | cadastra um aluno ou administrador: chama o auth-service e guarda o `auth_id` retornado |
+| `POST` | `/courses` | ADMIN | cadastra um curso a partir de `{name, description}` |
+| `GET` | `/courses` | qualquer JWT válido | lista os cursos; é daqui que sai o `courseId` abaixo |
+| `POST` | `/feedback` | STUDENT | envia `{description, score, courseId}`; curso inexistente resulta em 404, `score <= 1` dispara o alerta ao administrador e marca `notified` |
+| `GET` | `/feedback` | STUDENT | lista as avaliações do próprio chamador |
+| `GET` | `/feedback?page=&size=` | ADMIN | lista todas as avaliações, paginadas (padrões `page=0`, `size=20`) |
 
-Login happens directly on the auth-service (`POST /auth/login`). Its token carries no role claim,
-so the role is resolved locally from the `authId` claim: the admin table is checked first, then the
-student table. Swagger UI: `http://localhost:8086/q/swagger-ui`.
+O login é feito diretamente no auth-service (`POST /auth/login`). O token dele não carrega
+reivindicação de papel, então o papel é resolvido localmente a partir da reivindicação `authId`:
+a tabela de administradores é consultada primeiro, depois a de alunos. Swagger UI:
+`http://localhost:8086/q/swagger-ui`.
 
 ### report-service
 
-`generateWeeklyReport` is a Timer Trigger driven by the `CRON_SCHEDULE` app setting. It builds the
-report over the last 7 days, stores it and e-mails it to `REPORT_EMAIL`. The same use case is
-exposed over HTTP for inspection when the service runs as a plain web app:
+`generateWeeklyReport` é um Timer Trigger acionado pela configuração `CRON_SCHEDULE` da Function
+App. Ele monta o relatório dos últimos 7 dias, armazena e envia para `REPORT_EMAIL`. O mesmo caso
+de uso fica exposto por HTTP para inspeção quando o serviço roda como aplicação web:
 
-| Method | Route | Description |
+| Método | Rota | Descrição |
 |---|---|---|
-| `POST` | `/reports/weekly/run` | builds the report, stores it, e-mails it and returns it as JSON |
-| `GET` | `/reports/weekly` | returns the same report as JSON without storing or e-mailing it |
+| `POST` | `/reports/weekly/run` | monta o relatório, armazena, envia por e-mail e devolve em JSON |
+| `GET` | `/reports/weekly` | devolve o mesmo relatório em JSON, sem armazenar nem enviar |
 
-The report carries evaluations per day, total evaluations, low-score count with the student ids
-behind it, average evaluations per week and the average score over the period.
+O relatório traz avaliações por dia, total de avaliações, quantidade de notas críticas com os
+identificadores dos alunos correspondentes, média de avaliações por semana e média das notas no
+período.
 
 ### notification-function
 
-| Function | Trigger | Auth | Description |
+| Função | Gatilho | Autorização | Descrição |
 |---|---|---|---|
-| `notifyCritical` | `POST /api/notifications/critical` | function key | e-mails a critical event to the administrators |
-| `health` | `GET /api/health` | anonymous | liveness probe |
-| `scanFeedbackErrors` | Timer (`LOG_SCAN_SCHEDULE`) | n/a | queries the feedback-service Application Insights for ERROR records and e-mails a digest |
+| `notifyCritical` | `POST /api/notifications/critical` | chave de função | envia um evento crítico por e-mail aos administradores |
+| `health` | `GET /api/health` | anônimo | sonda de disponibilidade |
+| `scanFeedbackErrors` | Timer (`LOG_SCAN_SCHEDULE`) | — | consulta o Application Insights do feedback-service por registros de erro e envia um resumo por e-mail |
 
-The alert payload carries exactly the three fields the challenge asks for:
+O payload do alerta carrega exatamente os três campos que o desafio pede:
 
 ```json
 { "descricao": "Database unreachable", "urgencia": "CRITICA", "dataEnvio": "2026-07-24T00:30:00Z" }
 ```
 
-`urgencia` is one of `BAIXA`, `MEDIA`, `ALTA`, `CRITICA`; `dataEnvio` is optional and defaults to
-the moment the event is received. The key goes in the `x-functions-key` header (or `?code=`).
+`urgencia` aceita `BAIXA`, `MEDIA`, `ALTA` ou `CRITICA`; `dataEnvio` é opcional e assume o
+instante do recebimento quando ausente. A chave vai no cabeçalho `x-functions-key` (ou no
+parâmetro `?code=`).
 
-`scanFeedbackErrors` scans the window `(previous run − lag, now − lag]`, the lag covering
-Application Insights ingestion latency. It keeps no state of its own: the Functions host persists
-the schedule status in the storage account.
+O `scanFeedbackErrors` examina a janela `(execução anterior − atraso, agora − atraso]`, sendo o
+atraso a folga para a latência de ingestão do Application Insights. Ele não guarda estado próprio:
+o host das Functions persiste a situação do agendamento na conta de armazenamento.
 
-## Data model
+## Modelo de dados
 
-Owned by `feedback-service` and versioned with Flyway (`quarkus.flyway.migrate-at-start=true`);
-`report-service` reads the same database and never writes DDL.
+Pertence ao `feedback-service` e é versionado com Flyway
+(`quarkus.flyway.migrate-at-start=true`); o `report-service` lê o mesmo banco e nunca escreve DDL.
 
-| Table | Columns |
+| Tabela | Colunas |
 |---|---|
-| `student` | `id` (UUID PK), `name`, `registration_number`, `auth_id` (indexed) |
-| `admin` | `id` (UUID PK), `name`, `auth_id` (indexed), `role` |
+| `student` | `id` (UUID PK), `name`, `registration_number`, `auth_id` (indexado) |
+| `admin` | `id` (UUID PK), `name`, `auth_id` (indexado), `role` |
 | `course` | `id` (UUID PK), `name`, `description` |
-| `feedback` | `id` (identity PK), `student_id` → `student`, `course_id` → `course`, `score` (0–10, checked), `review_description`, `review_date`, `notified`, `notified_date` |
+| `feedback` | `id` (identity PK), `student_id` → `student`, `course_id` → `course`, `score` (0–10, com check), `review_description`, `review_date`, `notified`, `notified_date` |
 
-`V1__init_schema.sql` creates the four tables. `V2__course_description_and_required_feedback_course.sql`
-adds `course.description`, backfills existing rows onto the seeded course and makes
-`feedback.course_id` mandatory.
+O `V1__init_schema.sql` cria as quatro tabelas. O
+`V2__course_description_and_required_feedback_course.sql` acrescenta `course.description`,
+preenche as linhas antigas com o curso semeado e torna `feedback.course_id` obrigatório.
 
-## Running locally
+## Executando localmente
 
-Prerequisites: Java 21, Maven, Docker.
+Pré-requisitos: Java 21, Maven, Docker.
 
 ```bash
-# 1. dependencies: PostgreSQL + MailHog
+# 1. dependências: PostgreSQL + MailHog
 docker compose up -d postgres mailhog
 
-# 2. auth-service (separate repository) on port 8085, with RSA keys and JWT_ISSUER=cheffy-auth
+# 2. auth-service (repositório separado) na porta 8085, com as chaves RSA e JWT_ISSUER=cheffy-auth
 #    cd ../cheffy-microservices/auth-service && mvn spring-boot:run
 
-# 3. feedback-service (applies the Flyway migrations on startup)
+# 3. feedback-service (aplica as migrações do Flyway na inicialização)
 cd feedback-service && mvn quarkus:dev      # http://localhost:8086
 
 # 4. report-service
 cd report-service && mvn quarkus:dev        # http://localhost:8087
 ```
 
-`JWT_ISSUER` here must match the auth-service `JWT_ISSUER`, otherwise every authenticated call
-fails validation with a 401. Outgoing mail (low-score alerts and weekly reports) is captured by
-MailHog at `http://localhost:8025`. To run everything in containers instead:
+O `JWT_ISSUER` daqui precisa ser idêntico ao do auth-service; se divergir, toda chamada
+autenticada falha na validação com 401. Os e-mails de saída (alertas de nota baixa e relatórios)
+são capturados pelo MailHog em `http://localhost:8025`. Para rodar tudo em contêiner:
 `docker compose up -d --build`.
 
-### End-to-end flow
+### Fluxo de ponta a ponta
 
 ```bash
-# register a student
+# cadastra um aluno
 curl -X POST localhost:8086/cadastro -H 'Content-Type: application/json' \
   -d '{"name":"Alice","login":"alice","password":"Password@1234","role":"STUDENT"}'
 
-# get a token from the auth-service
+# obtém um token no auth-service
 TOKEN=$(curl -s -X POST localhost:8085/auth/login -H 'Content-Type: application/json' \
   -d '{"login":"alice","password":"Password@1234"}' | jq -r .token)
 
-# register a course (ADMIN token required)
+# cadastra um curso (exige token de ADMIN)
 curl -X POST localhost:8086/courses -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"name":"Arquitetura de Software","description":"Padroes e estilos arquiteturais"}'
 
-# any authenticated caller can list the courses to pick a courseId
+# qualquer usuário autenticado pode listar os cursos para escolher um courseId
 COURSE_ID=$(curl -s localhost:8086/courses -H "Authorization: Bearer $TOKEN" | jq -r '.[0].id')
 
-# submit a critical feedback: score 1 triggers the alert e-mail
+# envia uma avaliação crítica: nota 1 dispara o e-mail de alerta
 curl -X POST localhost:8086/feedback -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   -d "{\"description\":\"Too fast\",\"score\":1,\"courseId\":\"$COURSE_ID\"}"
 
-# list my feedback, then generate the report
+# lista as próprias avaliações e gera o relatório
 curl localhost:8086/feedback -H "Authorization: Bearer $TOKEN"
 curl -X POST localhost:8087/reports/weekly/run
 ```
 
-## Configuration
+## Configuração
 
-Every property has a local default and an environment variable override, so the same build runs
-from the IDE, from docker-compose and in the cloud.
+Toda propriedade tem um valor padrão local e um ponto de sobrescrita por variável de ambiente, de
+modo que o mesmo build roda pela IDE, pelo docker-compose e na nuvem.
 
-| Variable | Default | Used by |
+| Variável | Padrão | Usada por |
 |---|---|---|
-| `DB_URL`, `DB_USER`, `DB_PASSWORD` | local PostgreSQL | feedback-service, report-service |
-| `AUTH_SERVICE_URL` | `http://localhost:8085` | feedback-service (registration) |
-| `AUTH_JWKS_URL` | `http://localhost:8085/.well-known/jwks.json` | feedback-service (token validation) |
-| `JWT_ISSUER` | `auth-service` | feedback-service; must match the auth-service value |
-| `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` | Gmail SMTP | all three modules |
-| `ADMIN_EMAIL` | `rate.me.fiap@gmail.com` | low-score alert and `notifyCritical` recipient |
-| `REPORT_EMAIL` | `rate.me.fiap@gmail.com` | weekly report recipient |
-| `ALERT_ADMIN_EMAIL` | falls back to `ADMIN_EMAIL` | `scanFeedbackErrors` digest recipient |
-| `CRON_SCHEDULE` | app setting | `generateWeeklyReport` schedule, read by the Functions host |
-| `LOG_SCAN_SCHEDULE` | app setting (`0 */5 * * * *` in the image) | `scanFeedbackErrors` schedule |
-| `LOG_SCAN_ENABLED`, `LOG_SCAN_LAG_SECONDS` | `true`, `120` | `scanFeedbackErrors` behaviour |
-| `FEEDBACK_INSIGHTS_APP_ID`, `FEEDBACK_INSIGHTS_API_KEY` | empty | Application Insights query API credentials |
+| `DB_URL`, `DB_USER`, `DB_PASSWORD` | PostgreSQL local | feedback-service, report-service |
+| `AUTH_SERVICE_URL` | `http://localhost:8085` | feedback-service (cadastro) |
+| `AUTH_JWKS_URL` | `http://localhost:8085/.well-known/jwks.json` | feedback-service (validação do token) |
+| `JWT_ISSUER` | `auth-service` | feedback-service; precisa ser igual ao valor do auth-service |
+| `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` | SMTP do Gmail | os três módulos |
+| `ADMIN_EMAIL` | `rate.me.fiap@gmail.com` | destinatário do alerta de nota baixa e do `notifyCritical` |
+| `REPORT_EMAIL` | `rate.me.fiap@gmail.com` | destinatário do relatório periódico |
+| `ALERT_ADMIN_EMAIL` | herda de `ADMIN_EMAIL` | destinatário do resumo do `scanFeedbackErrors` |
+| `CRON_SCHEDULE` | configuração da Function App | agendamento do `generateWeeklyReport`, lido pelo host das Functions |
+| `LOG_SCAN_SCHEDULE` | configuração da Function App (`0 */5 * * * *` na imagem) | agendamento do `scanFeedbackErrors` |
+| `LOG_SCAN_ENABLED`, `LOG_SCAN_LAG_SECONDS` | `true`, `120` | comportamento do `scanFeedbackErrors` |
+| `FEEDBACK_INSIGHTS_APP_ID`, `FEEDBACK_INSIGHTS_API_KEY` | vazio | credenciais da API de consulta do Application Insights |
 
-See `.env.example` for a ready-to-copy local set.
+O arquivo `.env.example` traz um conjunto local pronto para copiar.
 
-## Tests
+## Testes
 
 ```bash
 mvn -B verify
 ```
 
-Runs the unit suites of all three modules and the JaCoCo gate, which fails the build when a module
-drops below 85% line coverage. HTML report per module in `target/site/jacoco/index.html`. The
-suites are plain JUnit + Mockito: because every external system sits behind a port, none of them
-needs a container.
+Roda as suítes unitárias dos três módulos e o portão do JaCoCo, que falha o build quando um módulo
+cai abaixo de 85% de cobertura de linhas. O relatório em HTML de cada módulo fica em
+`target/site/jacoco/index.html`. As suítes são JUnit + Mockito puros: como todo sistema externo
+está atrás de uma porta, nenhuma delas precisa de contêiner.
 
 ## CI/CD
 
-| Workflow | Trigger | What it does |
+| Workflow | Disparo | O que faz |
 |---|---|---|
-| `ci.yml` | push/PR to `main` and `develop` | `mvn -B verify`, coverage gate, coverage table on the run summary, reports as artifacts |
-| `cd.yml` | push to `main` | matrix build of the three images, pushed to Docker Hub |
-| `report-service-cd.yml` | push to `main` touching `report-service/` | builds the image, pushes `:<commit>` and `:latest` to ACR, restarts the Function App |
-| `notification-function-cd.yml` | push to `main` touching `notification-function/` | same flow for the notification Function App |
+| `ci.yml` | push e PR em `main` e `develop` | `mvn -B verify`, portão de cobertura, tabela de cobertura no resumo da execução e relatórios como artefato |
+| `cd.yml` | push em `main` | build em matriz das três imagens, publicadas no Docker Hub |
+| `report-service-cd.yml` | push em `main` tocando `report-service/` | constrói a imagem, publica `:<commit>` e `:latest` no ACR e reinicia a Function App |
+| `notification-function-cd.yml` | push em `main` tocando `notification-function/` | mesmo fluxo para a Function App de notificação |
 
-## Cloud deployment
+## Deploy na nuvem
 
-Everything lives in the resource group `rg-dev-servless-FIAP`.
+Tudo vive no grupo de recursos `rg-dev-servless-FIAP`.
 
-| Component | Azure resource | Image |
+| Componente | Recurso Azure | Imagem |
 |---|---|---|
 | auth-service | Container App `auth-service-fiap` | `ratemeacr.azurecr.io/auth-service:observability` |
 | feedback-service | Container App `feedback-service-fiap` | `ratemeacr.azurecr.io/feedback-service:courses-917dc2c` |
 | report-service | Function App `rate-me-report-service` | `ratemeacr.azurecr.io/report-service:latest` |
 | notification-function | Function App `rate-me-notification-function` | `ratemeacr.azurecr.io/notification-function:latest` |
-| database | PostgreSQL Flexible Server `tc-database` | — |
+| banco de dados | PostgreSQL Flexible Server `tc-database` | — |
 
-Both Function Apps share the `rate-me-dedicated-plan` (B1). A custom container on Azure Functions
-requires a Premium or Dedicated plan — Flex Consumption does not support bring-your-own-container —
-and reusing one plan for both keeps the extra cost at zero.
+As duas Function Apps compartilham o `rate-me-dedicated-plan` (B1). Contêiner customizado no Azure
+Functions exige plano Premium ou Dedicated — o Flex Consumption não aceita imagem própria —, e
+reaproveitar um único plano para as duas mantém o custo adicional em zero.
 
-### Monitoring
+### Monitoramento
 
-Each service has its own Application Insights component, all reporting into the shared Log
-Analytics workspace `workspacergdevservlessfiapb71d`. Instrumentation is the Application Insights
-Java agent 3.7.8, attached without touching business code: baked into the image with `-javaagent`
-for the Container Apps, through the `JAVA_OPTS` app setting on the containerized notification
-Function App, and through `APPLICATIONINSIGHTS_ENABLE_AGENT` on the report Function App.
-`APPLICATIONINSIGHTS_ROLE_NAME` is what separates the services in the portal. On top of that,
-application logs carry `correlationId`, `authId` and `role` in the MDC, and `scanFeedbackErrors`
-turns ERROR-level telemetry into an e-mail to the administrators.
+Cada serviço tem seu próprio componente de Application Insights, todos gravando no workspace de
+Log Analytics compartilhado `workspacergdevservlessfiapb71d`. A instrumentação é o agente Java do
+Application Insights 3.7.8, anexado sem tocar em código de negócio: embutido na imagem com
+`-javaagent` nos Container Apps, pela configuração `JAVA_OPTS` na Function App de notificação em
+contêiner, e por `APPLICATIONINSIGHTS_ENABLE_AGENT` na Function App do relatório. A variável
+`APPLICATIONINSIGHTS_ROLE_NAME` é o que separa os serviços no portal. Além disso, os logs da
+aplicação carregam `correlationId`, `authId` e `role` no MDC, e o `scanFeedbackErrors` transforma
+telemetria de nível ERROR em e-mail para os administradores.
 
-## Team
+## Equipe
 
 Igor Costa · Leandro Fita · Thiago Soares · Victor Reis · Rodrigo Ferreira
