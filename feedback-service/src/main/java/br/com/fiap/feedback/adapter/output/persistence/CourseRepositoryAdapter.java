@@ -9,10 +9,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Panache-backed implementation of {@link CourseRepositoryPort}, following the same shape
- * as {@link StudentRepositoryAdapter}.
- */
 @ApplicationScoped
 public class CourseRepositoryAdapter
         implements PanacheRepositoryBase<CourseEntity, UUID>, CourseRepositoryPort {

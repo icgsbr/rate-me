@@ -12,17 +12,9 @@ import org.slf4j.MDC;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Request-scoped view of the authenticated caller.
- *
- * <p>The auth-service JWT does not carry a role claim, so the role is derived locally:
- * the caller is resolved by the {@code authId} claim against the admin table first, then
- * the student table. The resolved role is also pushed to the SLF4J MDC for logging.</p>
- */
 @RequestScoped
 public class CurrentUser {
 
-    /** Custom claim set by the auth-service holding its own user id. */
     static final String AUTH_ID_CLAIM = "authId";
 
     private final JsonWebToken jwt;
@@ -57,7 +49,6 @@ public class CurrentUser {
         return role;
     }
 
-    /** Ensures the caller is a student and returns their local id. */
     public UUID requireStudent() {
         resolve();
         if (role != Role.STUDENT) {
@@ -66,7 +57,6 @@ public class CurrentUser {
         return localId;
     }
 
-    /** Ensures the caller is an admin. */
     public void requireAdmin() {
         resolve();
         if (role != Role.ADMIN) {

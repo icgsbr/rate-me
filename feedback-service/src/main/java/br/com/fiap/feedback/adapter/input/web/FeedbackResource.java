@@ -34,15 +34,6 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import java.util.List;
 
-/**
- * Feedback endpoints. All routes require a valid JWT ({@link Authenticated}); the
- * effective role is resolved locally via {@link CurrentUser}.
- *
- * <ul>
- *   <li>{@code POST /feedback} — students submit a rating.</li>
- *   <li>{@code GET /feedback} — students list their own; admins get a paginated list of all.</li>
- * </ul>
- */
 @Path("/feedback")
 @Tag(name = "Feedback", description = "Submission and listing of course feedback")
 @SecurityRequirement(name = "bearerAuth")

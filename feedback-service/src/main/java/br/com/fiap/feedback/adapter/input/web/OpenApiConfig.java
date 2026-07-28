@@ -5,10 +5,6 @@ import org.eclipse.microprofile.openapi.annotations.enums.SecuritySchemeType;
 import org.eclipse.microprofile.openapi.annotations.info.Info;
 import org.eclipse.microprofile.openapi.annotations.security.SecurityScheme;
 
-/**
- * Global OpenAPI metadata: API info and the JWT bearer scheme referenced by
- * {@code @SecurityRequirement("bearerAuth")} on the secured resources.
- */
 @OpenAPIDefinition(
         info = @Info(
                 title = "Feedback Service API",

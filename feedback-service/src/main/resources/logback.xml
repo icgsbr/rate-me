@@ -1,10 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-    Logback configuration enabled by the quarkus-logging-logback extension.
-    The pattern includes the MDC keys populated by MdcRequestFilter / CurrentUser
-    (correlationId, authId, role), which is the foundation for log correlation and the
-    future Azure Monitor error alerting.
--->
 <configuration>
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">

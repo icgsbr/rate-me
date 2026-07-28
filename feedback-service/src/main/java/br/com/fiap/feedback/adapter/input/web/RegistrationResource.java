@@ -21,10 +21,6 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-/**
- * Public registration endpoint. The route name ({@code /cadastro}) follows the agreed
- * platform contract; payloads and code are in English.
- */
 @Path("/cadastro")
 @Tag(name = "Registration", description = "Public sign-up for students and admins")
 @Consumes(MediaType.APPLICATION_JSON)
@@ -66,7 +62,6 @@ public class RegistrationResource {
         return Response.status(Response.Status.CREATED).entity(response).build();
     }
 
-    /** Defaults to STUDENT when the role is missing or unrecognised. */
     private Role parseRole(String role) {
         if (role == null || role.isBlank()) {
             return Role.STUDENT;

@@ -8,7 +8,6 @@ import jakarta.validation.constraints.Size;
 
 import java.util.UUID;
 
-/** Feedback submission payload for {@code POST /feedback}. */
 public record FeedbackRequest(
         @NotBlank @Size(max = 255) String description,
         @NotNull @Min(0) @Max(10) Integer score,

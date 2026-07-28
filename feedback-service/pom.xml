@@ -15,19 +15,9 @@
     <description>Student feedback API: registration (via auth-service), feedback submission and listing</description>
 
     <dependencies>
-        <!-- REST layer (Quarkus REST, formerly RESTEasy Reactive) + JSON via Jackson -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest</artifactId>
-            <!--
-                No <version> here on purpose: the Quarkus BOM (3.15.1) manages it. Pinning
-                3.31.1 mixed runtime and deployment modules from different Quarkus releases
-                and broke the augmentation step with a missing build item.
-            -->
-            <!--
-                Excluímos o provedor de log padrão do JBoss para evitar um conflito
-                com o Logback, que é o nosso provedor de log escolhido.
-            -->
             <exclusions>
                 <exclusion>
                     <groupId>org.jboss.log</groupId>
@@ -40,13 +30,11 @@
             <artifactId>quarkus-rest-jackson</artifactId>
         </dependency>
 
-        <!-- Bean validation for request DTOs -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-hibernate-validator</artifactId>
         </dependency>
 
-        <!-- Persistence: Hibernate ORM with Panache + PostgreSQL driver -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-hibernate-orm-panache</artifactId>
@@ -56,31 +44,26 @@
             <artifactId>quarkus-jdbc-postgresql</artifactId>
         </dependency>
 
-        <!-- Schema migrations (the schema is owned by Flyway, not Hibernate DDL) -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-flyway</artifactId>
         </dependency>
 
-        <!-- Distributed JWT validation against the auth-service JWKS endpoint -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-jwt</artifactId>
         </dependency>
 
-        <!-- REST client used to call the external auth-service (/auth/register) -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest-client-jackson</artifactId>
         </dependency>
 
-        <!-- SMTP mail (low-score alert to the admin); points to MailHog locally -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-mailer</artifactId>
         </dependency>
 
-        <!-- OpenAPI + Swagger UI for contract documentation -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-openapi</artifactId>
@@ -91,15 +74,12 @@
             <artifactId>quarkus-container-image-docker</artifactId>
         </dependency>
 
-        <!-- Logback support in Quarkus (replaces the default JBoss LogManager) so we can
-             use the SLF4J API + MDC + a logback.xml, as required by the challenge. -->
         <dependency>
             <groupId>io.quarkiverse.logging.logback</groupId>
             <artifactId>quarkus-logging-logback</artifactId>
             <version>${quarkus-logging-logback.version}</version>
         </dependency>
 
-        <!-- Lombok (compile-time only) -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -109,12 +89,6 @@
 
     <build>
         <plugins>
-            <!--
-                groupId must match the parent's pluginManagement entry
-                (${quarkus.platform.group-id} = io.quarkus.platform), otherwise the managed
-                version and the 'build' goal are not inherited and target/quarkus-app/ is
-                never produced - which the Dockerfile copies.
-            -->
             <plugin>
                 <groupId>${quarkus.platform.group-id}</groupId>
                 <artifactId>quarkus-maven-plugin</artifactId>

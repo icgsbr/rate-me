@@ -12,12 +12,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
 
-/**
- * Adapts the typed {@link AuthClient} to the application's {@link AuthClientPort}.
- * {@link RegistrationRejectedException} (auth-service rejected the data, e.g. invalid
- * password) is let through as-is; anything else (5xx, timeout, unreachable host) is
- * wrapped into a {@link RegistrationException}, an infrastructure failure.
- */
 @ApplicationScoped
 public class AuthClientAdapter implements AuthClientPort {
 

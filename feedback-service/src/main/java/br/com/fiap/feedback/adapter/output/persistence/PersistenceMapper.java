@@ -9,10 +9,6 @@ import br.com.fiap.feedback.domain.Course;
 import br.com.fiap.feedback.domain.Feedback;
 import br.com.fiap.feedback.domain.Student;
 
-/**
- * Translates between domain models and JPA entities, keeping persistence concerns out
- * of the domain. Stateless static helpers.
- */
 final class PersistenceMapper {
 
     private PersistenceMapper() {
