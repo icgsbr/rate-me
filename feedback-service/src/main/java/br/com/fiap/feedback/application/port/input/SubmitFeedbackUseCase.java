@@ -18,10 +18,12 @@ public interface SubmitFeedbackUseCase {
      * @param studentId   local id of the authenticated student
      * @param description  free-text review
      * @param score        rating from {@link Feedback#MIN_SCORE} to {@link Feedback#MAX_SCORE}
+     * @param courseId     the course being reviewed; must already exist
      */
     record SubmitFeedbackCommand(
             UUID studentId,
             String description,
-            int score
+            int score,
+            UUID courseId
     ) {}
 }

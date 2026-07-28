@@ -6,12 +6,10 @@ import lombok.Getter;
 import java.util.UUID;
 
 /**
- * A course/lesson that feedback can be attached to.
+ * A course/lesson that feedback is attached to.
  *
- * <p>The public feedback contract only carries {@code description} and {@code score},
- * so submissions are attached to a single seeded default course (see Flyway
- * {@code V1__init_schema.sql}). The entity is kept to preserve the relational model and
- * to leave room for per-course feedback later.</p>
+ * <p>Courses are registered by admins and listed by any authenticated caller, so a student
+ * can pick one before submitting. Every {@link Feedback} references exactly one course.</p>
  */
 @Getter
 @Builder
@@ -19,4 +17,5 @@ public class Course {
 
     private final UUID id;
     private final String name;
+    private final String description;
 }

@@ -1,5 +1,6 @@
 package br.com.fiap.feedback.adapter.input.web.error;
 
+import br.com.fiap.feedback.domain.exception.CourseNotFoundException;
 import br.com.fiap.feedback.domain.exception.ForbiddenOperationException;
 import br.com.fiap.feedback.domain.exception.RegistrationException;
 import br.com.fiap.feedback.domain.exception.RegistrationRejectedException;
@@ -28,6 +29,16 @@ public final class DomainExceptionMappers {
     public static class UserNotFoundMapper implements ExceptionMapper<UserNotFoundException> {
         @Override
         public Response toResponse(UserNotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(new ErrorResponse("not_found", e.getMessage()))
+                    .build();
+        }
+    }
+
+    @Provider
+    public static class CourseNotFoundMapper implements ExceptionMapper<CourseNotFoundException> {
+        @Override
+        public Response toResponse(CourseNotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(new ErrorResponse("not_found", e.getMessage()))
                     .build();

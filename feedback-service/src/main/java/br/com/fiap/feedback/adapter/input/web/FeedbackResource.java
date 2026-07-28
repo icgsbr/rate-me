@@ -68,24 +68,26 @@ public class FeedbackResource {
 
     @POST
     @Operation(summary = "Submit feedback",
-            description = "Students submit a rating (0-10) and description for the default course. "
-                    + "A critical score triggers a low-score alert e-mail to the admin. "
-                    + "Restricted to authenticated students.")
+            description = "Students submit a rating (0-10) and description for a specific course; "
+                    + "the courseId comes from GET /courses. A critical score triggers a low-score "
+                    + "alert e-mail to the admin. Restricted to authenticated students.")
     @RequestBody(content = @Content(schema = @Schema(implementation = FeedbackRequest.class)))
     @APIResponses({
             @APIResponse(responseCode = "201", description = "Feedback created",
                     content = @Content(schema = @Schema(implementation = FeedbackResponse.class))),
-            @APIResponse(responseCode = "400", description = "Invalid payload (blank description or score out of range)",
+            @APIResponse(responseCode = "400", description = "Invalid payload (blank description, missing courseId or score out of range)",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @APIResponse(responseCode = "401", description = "Missing or invalid JWT"),
             @APIResponse(responseCode = "403", description = "Caller is not a student",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @APIResponse(responseCode = "404", description = "The referenced course does not exist",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public Response submit(@Valid FeedbackRequest request) {
         var studentId = currentUser.requireStudent();
 
-        Feedback feedback = submitFeedback.submit(
-                new SubmitFeedbackCommand(studentId, request.description(), request.score()));
+        Feedback feedback = submitFeedback.submit(new SubmitFeedbackCommand(
+                studentId, request.description(), request.score(), request.courseId()));
 
         return Response.status(Response.Status.CREATED)
                 .entity(FeedbackResponse.from(feedback))
