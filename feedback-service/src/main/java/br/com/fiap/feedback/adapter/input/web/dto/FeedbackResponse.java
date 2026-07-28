@@ -5,7 +5,6 @@ import br.com.fiap.feedback.domain.Feedback;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/** Representation of a feedback returned by the API. */
 public record FeedbackResponse(
         Long id,
         UUID studentId,

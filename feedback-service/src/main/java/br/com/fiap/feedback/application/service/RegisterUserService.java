@@ -14,18 +14,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
 
-/**
- * Registers a user across the two systems.
- *
- * <ol>
- *   <li>Generate the local id.</li>
- *   <li>Register the credentials in the auth-service (local id becomes the externalId).</li>
- *   <li>Persist the local student/admin together with the returned authId.</li>
- * </ol>
- *
- * <p>The auth-service call happens before the local insert so that, if it fails, no
- * dangling local user is created.</p>
- */
 @ApplicationScoped
 public class RegisterUserService implements RegisterUserUseCase {
 

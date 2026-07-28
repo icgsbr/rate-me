@@ -9,7 +9,6 @@ import lombok.Setter;
 
 import java.util.UUID;
 
-/** JPA mapping for the {@code course} table. */
 @Entity
 @Table(name = "course")
 @Getter

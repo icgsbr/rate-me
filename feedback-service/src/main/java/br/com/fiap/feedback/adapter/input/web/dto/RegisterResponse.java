@@ -4,7 +4,6 @@ import br.com.fiap.feedback.application.port.input.RegisterUserUseCase.RegisterU
 
 import java.util.UUID;
 
-/** Result of a successful registration. */
 public record RegisterResponse(
         UUID localId,
         UUID authId,

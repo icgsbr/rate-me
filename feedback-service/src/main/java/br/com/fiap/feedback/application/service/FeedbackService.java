@@ -19,12 +19,6 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Implements the three feedback use cases.
- *
- * <p>On submission, when the score is critical the admin is notified and the feedback is
- * flagged as notified in the same transaction.</p>
- */
 @ApplicationScoped
 public class FeedbackService implements
         SubmitFeedbackUseCase,
@@ -37,7 +31,6 @@ public class FeedbackService implements
     private final StudentRepositoryPort studentRepository;
     private final NotificationPort notification;
 
-    /** Course every submission is attached to (seeded by Flyway V1). */
     private final UUID defaultCourseId;
 
     public FeedbackService(FeedbackRepositoryPort feedbackRepository,
@@ -79,7 +72,6 @@ public class FeedbackService implements
         return feedback;
     }
 
-    /** Sends the low-score alert and persists the notified flag. */
     private Feedback notifyAdmin(Feedback feedback) {
         Student student = studentRepository.findByLocalId(feedback.getStudentId())
                 .orElseThrow(() -> new UserNotFoundException(

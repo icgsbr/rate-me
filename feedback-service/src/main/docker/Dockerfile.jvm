@@ -1,15 +1,9 @@
-# Multi-stage JVM image for feedback-service.
-# Build context is the repository ROOT (multi-module build needs the parent pom),
-# e.g.:  docker build -f feedback-service/src/main/docker/Dockerfile.jvm .
 
-# --- Build stage ---
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
 COPY . .
-# -am also builds the required modules (here just the parent pom).
 RUN mvn -B -pl feedback-service -am package -DskipTests
 
-# --- Runtime stage ---
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /build/feedback-service/target/quarkus-app/ ./

@@ -4,7 +4,6 @@ import br.com.fiap.feedback.application.port.input.ListAllFeedbackUseCase.Feedba
 
 import java.util.List;
 
-/** Paginated feedback listing returned to admins. */
 public record PagedFeedbackResponse(
         List<FeedbackResponse> items,
         int page,

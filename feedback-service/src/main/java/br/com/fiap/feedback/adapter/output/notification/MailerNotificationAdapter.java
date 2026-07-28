@@ -10,13 +10,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Sends the low-score alert as an e-mail over SMTP (MailHog in development).
- *
- * <p>This is the only place that knows about e-mail. Swapping it for Azure Communication
- * Services later means replacing this adapter, leaving {@link NotificationPort} and the
- * application layer untouched.</p>
- */
 @ApplicationScoped
 public class MailerNotificationAdapter implements NotificationPort {
 
@@ -34,7 +27,6 @@ public class MailerNotificationAdapter implements NotificationPort {
 
     @Override
     public void notifyLowScore(Feedback feedback, Student student) {
-        // The PDF requires the alert to carry: description, urgency and submission date.
         String subject = "[URGENT] Low score feedback received (score %d)".formatted(feedback.getScore());
         String body = """
                 A critical feedback has been submitted and requires attention.

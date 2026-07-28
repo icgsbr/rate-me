@@ -10,7 +10,6 @@ import lombok.Setter;
 
 import java.util.UUID;
 
-/** JPA mapping for the {@code admin} table. */
 @Entity
 @Table(name = "admin")
 @Getter

@@ -9,7 +9,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Optional;
 import java.util.UUID;
 
-/** Panache-backed implementation of {@link AdminRepositoryPort}. */
 @ApplicationScoped
 public class AdminRepositoryAdapter
         implements PanacheRepositoryBase<AdminEntity, UUID>, AdminRepositoryPort {

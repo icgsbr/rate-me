@@ -9,11 +9,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Panache-backed implementation of {@link StudentRepositoryPort}. Implementing
- * {@link PanacheRepositoryBase} gives the CRUD/query helpers; the port methods map the
- * results to domain objects.
- */
 @ApplicationScoped
 public class StudentRepositoryAdapter
         implements PanacheRepositoryBase<StudentEntity, UUID>, StudentRepositoryPort {

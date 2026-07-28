@@ -11,7 +11,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.util.List;
 import java.util.UUID;
 
-/** Panache-backed implementation of {@link FeedbackRepositoryPort}. */
 @ApplicationScoped
 public class FeedbackRepositoryAdapter
         implements PanacheRepository<FeedbackEntity>, FeedbackRepositoryPort {
@@ -19,13 +18,10 @@ public class FeedbackRepositoryAdapter
     @Override
     public Feedback save(Feedback feedback) {
         if (feedback.getId() == null) {
-            // New feedback: insert.
             FeedbackEntity entity = PersistenceMapper.toEntity(feedback);
             persist(entity);
             return PersistenceMapper.toDomain(entity);
         }
-        // Existing feedback (e.g. flagged as notified): update the managed entity so the
-        // change is flushed at transaction commit.
         FeedbackEntity entity = findById(feedback.getId());
         entity.setNotified(feedback.isNotified());
         entity.setNotifiedDate(feedback.getNotifiedDate());
@@ -34,8 +30,6 @@ public class FeedbackRepositoryAdapter
 
     @Override
     public long countAll() {
-        // Delegates to Panache's count() (implemented by bytecode enhancement). A distinct
-        // name is required so it does not clash with PanacheRepository.count().
         return count();
     }
 

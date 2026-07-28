@@ -13,7 +13,6 @@ import lombok.Setter;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/** JPA mapping for the {@code feedback} table (identity primary key). */
 @Entity
 @Table(name = "feedback")
 @Getter
