@@ -12,10 +12,6 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Implements the two course use cases. The id is generated locally, like the user ids in
- * {@link RegisterUserService}.
- */
 @ApplicationScoped
 public class CourseService implements CreateCourseUseCase, ListCoursesUseCase {
 

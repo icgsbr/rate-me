@@ -4,7 +4,6 @@ import br.com.fiap.feedback.domain.Course;
 
 import java.util.UUID;
 
-/** Representation of a course returned by the API. */
 public record CourseResponse(
         UUID id,
         String name,

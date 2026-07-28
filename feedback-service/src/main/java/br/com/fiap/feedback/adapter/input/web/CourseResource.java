@@ -28,16 +28,6 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import java.util.List;
 
-/**
- * Course endpoints. All routes require a valid JWT ({@link Authenticated}); the effective
- * role is resolved locally via {@link CurrentUser}.
- *
- * <ul>
- *   <li>{@code POST /courses} — admins register a course.</li>
- *   <li>{@code GET /courses} — any authenticated caller lists them, so a student can pick
- *       the {@code courseId} to submit feedback for.</li>
- * </ul>
- */
 @Path("/courses")
 @Tag(name = "Courses", description = "Registration and listing of courses")
 @SecurityRequirement(name = "bearerAuth")
