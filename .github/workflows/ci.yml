@@ -3,6 +3,12 @@ name: CI
 on:
   pull_request:
     branches: [ "main", "develop" ]
+  # Also guards direct pushes, which previously bypassed CI entirely.
+  push:
+    branches: [ "main", "develop" ]
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -17,9 +23,43 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # Builds and tests every module (parent reactor).
-      - name: Build & verify
+      # Compiles, runs the unit-test suites of every module and enforces the JaCoCo
+      # coverage gate (jacoco:check fails the build below 85% line coverage per module).
+      - name: Build, test & check coverage
         run: mvn -B verify
+
+      # Renders a per-module coverage table straight on the run summary, so a reviewer
+      # does not have to download the artifact to see where the project stands.
+      - name: Coverage summary
+        if: always()
+        run: |
+          {
+            echo "## Cobertura de testes (JaCoCo)"
+            echo
+            echo "| Módulo | Linhas | Cobertura | Mínimo |"
+            echo "| --- | --- | --- | --- |"
+            for csv in */target/site/jacoco/jacoco.csv; do
+              [ -f "$csv" ] || continue
+              module="${csv%%/*}"
+              awk -F, -v module="$module" '
+                NR > 1 { missed += $8; covered += $9 }
+                END {
+                  total = missed + covered
+                  pct = total ? 100 * covered / total : 0
+                  printf "| %s | %d/%d | %.1f%% | 85%% |\n", module, covered, total, pct
+                }' "$csv"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test & coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-and-coverage-reports
+          path: |
+            **/target/surefire-reports/**
+            **/target/site/jacoco/**
+          if-no-files-found: warn
 
       # --- Optional SonarQube analysis (enabled when SONAR_TOKEN is set) -------------
       # - name: SonarQube
