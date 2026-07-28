@@ -8,13 +8,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 
-/**
- * Alert payload accepted by the HTTP trigger. Field names follow the challenge wording
- * ({@code descricao}, {@code urgencia}, {@code dataEnvio}).
- *
- * <p>{@code dataEnvio} is optional and defaults to "now"; unknown properties are ignored so
- * that a richer caller (e.g. an Azure Monitor webhook wrapper) does not break the contract.</p>
- */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record CriticalNotificationRequest(
         String descricao,

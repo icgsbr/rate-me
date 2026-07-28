@@ -11,13 +11,6 @@ import com.microsoft.azure.functions.annotation.HttpTrigger;
 
 import java.util.Optional;
 
-/**
- * Anonymous liveness probe at {@code GET /api/health}.
- *
- * <p>Kept key-free on purpose: it exposes no data and is what the platform warm-up probe
- * and the Postman collection use to tell "the function app is up" apart from
- * "the alert endpoint rejected my key".</p>
- */
 public class HealthFunction {
 
     @FunctionName("health")

@@ -11,12 +11,6 @@ import org.slf4j.LoggerFactory;
 
 import java.time.format.DateTimeFormatter;
 
-/**
- * Sends the critical alert as an e-mail over SMTP.
- *
- * <p>This is the only place that knows about e-mail; it mirrors the body format used by
- * {@code feedback-service}'s low-score alert so both alerts read the same.</p>
- */
 @ApplicationScoped
 public class MailerAlertAdapter implements AlertSenderPort {
 
@@ -42,7 +36,6 @@ public class MailerAlertAdapter implements AlertSenderPort {
     public void sendCriticalAlert(CriticalNotification notification, String recipient) {
         String subject = "[%s] Critical event on the rate-me platform".formatted(notification.urgencia());
 
-        // The challenge requires the alert to carry: description, urgency and submission date.
         String body = """
                 A critical event was reported and requires attention.
 

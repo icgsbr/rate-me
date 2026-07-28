@@ -7,12 +7,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Single responsibility of this function: escalate a critical event to the administrators.
- *
- * <p>The event is already validated by {@link CriticalNotification}'s constructor, so this
- * service only orchestrates the delivery and records the outcome.</p>
- */
 @ApplicationScoped
 public class CriticalNotificationService implements SendCriticalNotificationUseCase {
 
