@@ -3,15 +3,16 @@ package br.com.fiap.feedback.application.service;
 import br.com.fiap.feedback.application.port.input.ListAllFeedbackUseCase;
 import br.com.fiap.feedback.application.port.input.ListMyFeedbackUseCase;
 import br.com.fiap.feedback.application.port.input.SubmitFeedbackUseCase;
+import br.com.fiap.feedback.application.port.output.CourseRepositoryPort;
 import br.com.fiap.feedback.application.port.output.FeedbackRepositoryPort;
 import br.com.fiap.feedback.application.port.output.NotificationPort;
 import br.com.fiap.feedback.application.port.output.StudentRepositoryPort;
 import br.com.fiap.feedback.domain.Feedback;
 import br.com.fiap.feedback.domain.Student;
+import br.com.fiap.feedback.domain.exception.CourseNotFoundException;
 import br.com.fiap.feedback.domain.exception.UserNotFoundException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,8 +23,9 @@ import java.util.UUID;
 /**
  * Implements the three feedback use cases.
  *
- * <p>On submission, when the score is critical the admin is notified and the feedback is
- * flagged as notified in the same transaction.</p>
+ * <p>A submission is rejected when the referenced course does not exist. When the score is
+ * critical the admin is notified and the feedback is flagged as notified in the same
+ * transaction.</p>
  */
 @ApplicationScoped
 public class FeedbackService implements
@@ -36,18 +38,16 @@ public class FeedbackService implements
     private final FeedbackRepositoryPort feedbackRepository;
     private final StudentRepositoryPort studentRepository;
     private final NotificationPort notification;
-
-    /** Course every submission is attached to (seeded by Flyway V1). */
-    private final UUID defaultCourseId;
+    private final CourseRepositoryPort courseRepository;
 
     public FeedbackService(FeedbackRepositoryPort feedbackRepository,
                            StudentRepositoryPort studentRepository,
                            NotificationPort notification,
-                           @ConfigProperty(name = "app.default-course-id") UUID defaultCourseId) {
+                           CourseRepositoryPort courseRepository) {
         this.feedbackRepository = feedbackRepository;
         this.studentRepository = studentRepository;
         this.notification = notification;
-        this.defaultCourseId = defaultCourseId;
+        this.courseRepository = courseRepository;
     }
 
     @Override
@@ -59,9 +59,13 @@ public class FeedbackService implements
                     "score must be between " + Feedback.MIN_SCORE + " and " + Feedback.MAX_SCORE);
         }
 
+        if (!courseRepository.existsById(command.courseId())) {
+            throw new CourseNotFoundException("Course not found: " + command.courseId());
+        }
+
         Feedback feedback = Feedback.builder()
                 .studentId(command.studentId())
-                .courseId(defaultCourseId)
+                .courseId(command.courseId())
                 .score(score)
                 .reviewDescription(command.description())
                 .reviewDate(OffsetDateTime.now())
@@ -69,8 +73,9 @@ public class FeedbackService implements
                 .build();
 
         feedback = feedbackRepository.save(feedback);
-        log.info("Feedback {} submitted by student {} with score {}",
-                feedback.getId(), feedback.getStudentId(), feedback.getScore());
+        log.info("Feedback {} submitted by student {} for course {} with score {}",
+                feedback.getId(), feedback.getStudentId(), feedback.getCourseId(),
+                feedback.getScore());
 
         if (feedback.isCritical()) {
             feedback = notifyAdmin(feedback);

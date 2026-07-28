@@ -44,7 +44,9 @@ domain         (Feedback, Student, Admin, Course, WeeklyReport)
 | Method | Route | Role | Description |
 |---|---|---|---|
 | `POST` | `/cadastro` | public | register a student/admin (calls auth-service, persists `auth_id`) |
-| `POST` | `/feedback` | STUDENT | submit `{description, score}`; `score ≤ 1` triggers an admin e-mail alert and sets `notified` |
+| `POST` | `/courses` | ADMIN | register a course from `{name, description}` |
+| `GET` | `/courses` | any authenticated | list courses (`id`, `name`, `description`) — the source of the `courseId` below |
+| `POST` | `/feedback` | STUDENT | submit `{description, score, courseId}`; unknown `courseId` is a 404; `score ≤ 1` triggers an admin e-mail alert and sets `notified` |
 | `GET` | `/feedback` | STUDENT | list own feedback |
 | `GET` | `/feedback?page=&size=` | ADMIN | list all feedback, paginated |
 
@@ -93,7 +95,7 @@ docker compose up -d postgres mailhog
 # 2. auth-service (separate repo) on port 8085, with RSA keys and JWT_ISSUER=cheffy-auth
 #    cd ../cheffy-microservices/auth-service && ./init-keys.sh && mvn spring-boot:run ...
 
-# 3. feedback-service (applies Flyway V1 on start)
+# 3. feedback-service (applies the Flyway migrations on start)
 cd feedback-service && mvn quarkus:dev      # http://localhost:8086
 
 # 4. report-service
@@ -116,9 +118,18 @@ curl -X POST localhost:8086/cadastro -H 'Content-Type: application/json' \
 TOKEN=$(curl -s -X POST localhost:8085/auth/login -H 'Content-Type: application/json' \
   -d '{"login":"alice","password":"Password@1234"}' | jq -r .token)
 
+# register a course (needs an ADMIN token) and pick its id
+curl -X POST localhost:8086/courses -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Arquitetura de Software","description":"Padroes e estilos arquiteturais"}'
+
+# list the courses to get the courseId (any authenticated caller)
+COURSE_ID=$(curl -s localhost:8086/courses -H "Authorization: Bearer $TOKEN" | jq -r '.[0].id')
+
 # submit a critical feedback (score 1 -> alert e-mail in MailHog)
 curl -X POST localhost:8086/feedback -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' -d '{"description":"Too fast","score":1}'
+  -H 'Content-Type: application/json' \
+  -d "{\"description\":\"Too fast\",\"score\":1,\"courseId\":\"$COURSE_ID\"}"
 
 # list my feedback
 curl localhost:8086/feedback -H "Authorization: Bearer $TOKEN"

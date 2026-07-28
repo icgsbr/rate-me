@@ -19,7 +19,11 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest</artifactId>
-            <version>3.31.1</version>
+            <!--
+                No <version> here on purpose: the Quarkus BOM (3.15.1) manages it. Pinning
+                3.31.1 mixed runtime and deployment modules from different Quarkus releases
+                and broke the augmentation step with a missing build item.
+            -->
             <!--
                 Excluímos o provedor de log padrão do JBoss para evitar um conflito
                 com o Logback, que é o nosso provedor de log escolhido.
@@ -105,8 +109,14 @@
 
     <build>
         <plugins>
+            <!--
+                groupId must match the parent's pluginManagement entry
+                (${quarkus.platform.group-id} = io.quarkus.platform), otherwise the managed
+                version and the 'build' goal are not inherited and target/quarkus-app/ is
+                never produced - which the Dockerfile copies.
+            -->
             <plugin>
-                <groupId>io.quarkus</groupId>
+                <groupId>${quarkus.platform.group-id}</groupId>
                 <artifactId>quarkus-maven-plugin</artifactId>
             </plugin>
             <plugin>

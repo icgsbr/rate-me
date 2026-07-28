@@ -14,7 +14,7 @@ import org.eclipse.microprofile.openapi.annotations.security.SecurityScheme;
                 title = "Feedback Service API",
                 version = "1.0.0",
                 description = "Student feedback API: registration (via auth-service), "
-                        + "feedback submission and listing.")
+                        + "course registration and listing, feedback submission and listing.")
 )
 @SecurityScheme(
         securitySchemeName = "bearerAuth",
