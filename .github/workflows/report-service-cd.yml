@@ -1,0 +1,62 @@
+name: CI/CD - Deploy Report Service
+
+on:
+  # Aciona o workflow em pushes para a branch main, mas SOMENTE se houver
+  # alterações dentro da pasta 'report-service/'.
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'report-service/**'
+      - '.github/workflows/report-service-cd.yml'
+
+
+  # Permite que você execute este workflow manualmente a partir da aba Actions no GitHub.
+  workflow_dispatch:
+
+# Variáveis de ambiente usadas no workflow
+env:
+  REGISTRY_URL: "ratemeacr.azurecr.io"
+  IMAGE_NAME: "report-service"
+  FUNCTION_APP_NAME: "rate-me-report-service"
+  RESOURCE_GROUP: "rg-dev-servless-FIAP"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: '1. Checkout do código'
+        uses: actions/checkout@v4
+
+      - name: '2. Fazer login na Azure'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: '3. Fazer login no Azure Container Registry (ACR)'
+        run: az acr login --name $(echo "$REGISTRY_URL" | cut -d'.' -f1)
+
+      - name: '4. Obter a tag da imagem (hash do commit)'
+        id: get_tag
+        run: echo "IMAGE_TAG=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: '5. Construir a imagem Docker'
+        run: |
+          docker build -f report-service/src/main/docker/Dockerfile.jvm -t ${{ env.IMAGE_NAME }}:${{ steps.get_tag.outputs.IMAGE_TAG }} .
+
+      - name: '6. Fazer Double-Tagging da imagem (hash e latest)'
+        run: |
+          docker tag ${{ env.IMAGE_NAME }}:${{ steps.get_tag.outputs.IMAGE_TAG }} ${{ env.REGISTRY_URL }}/${{ env.IMAGE_NAME }}:${{ steps.get_tag.outputs.IMAGE_TAG }}
+          docker tag ${{ env.IMAGE_NAME }}:${{ steps.get_tag.outputs.IMAGE_TAG }} ${{ env.REGISTRY_URL }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: '7. Enviar as duas tags para o ACR'
+        run: |
+          docker push ${{ env.REGISTRY_URL }}/${{ env.IMAGE_NAME }}:${{ steps.get_tag.outputs.IMAGE_TAG }}
+          docker push ${{ env.REGISTRY_URL }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: '8. Reiniciar a Azure Function para carregar a nova imagem'
+        run: |
+          az functionapp restart --name ${{ env.FUNCTION_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}
+
+      - name: '9. Logout da Azure'
+        run: az logout
+        if: always()

@@ -1,0 +1,65 @@
+name: CD
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - feedback-service
+          - report-service
+          - notification-function
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build ${{ matrix.service }}
+        run: mvn -B -pl ${{ matrix.service }} -am package -DskipTests
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.service }}/src/main/docker/Dockerfile.jvm
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
+
+  # --- Azure deployment (placeholders) -------------------------------------------------
+  # Wire these once the cloud resources exist. Expected secrets:
+  #   AZURE_CREDENTIALS, AZURE_FUNCTIONAPP_PUBLISH_PROFILE, ACR_LOGIN_SERVER, ...
+  #
+  # deploy-report-function:        # report-service -> Azure Function (Timer Trigger)
+  #   needs: build-and-push
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: azure/functions-action@v1
+  #       with:
+  #         app-name: rate-me-report
+  #         publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+  #
+  # deploy-notification-function:  # notification-function -> Azure Function (Monitor alert)
+  #   needs: build-and-push
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: azure/functions-action@v1
+  #       with:
+  #         app-name: rate-me-notification
+  #         publish-profile: ${{ secrets.AZURE_NOTIFICATION_PUBLISH_PROFILE }}

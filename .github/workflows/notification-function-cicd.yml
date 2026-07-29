@@ -1,0 +1,41 @@
+name: CI/CD - Deploy Notification Function
+
+on:
+  # Aciona o workflow em pushes para a branch main, mas SOMENTE se houver
+  # alterações dentro da pasta 'notification-function/'.
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'notification-function/**'
+      - '.github/workflows/notification-function-cicd.yml'
+
+  # Permite que você execute este workflow manualmente a partir da aba Actions no GitHub.
+  workflow_dispatch:
+
+env:
+  FUNCTION_APP_NAME: 'rate-me-notification-function' # Nome da sua Function App na Azure
+  JAVA_VERSION: '21'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: '1. Checkout do código'
+        uses: actions/checkout@v4
+
+      - name: '2. Configurar JDK ${{ env.JAVA_VERSION }}'
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: '3. Compilar e empacotar com Maven'
+        run: mvn -B clean package -f notification-function/pom.xml
+
+      - name: '4. Fazer deploy para a Azure Function'
+        uses: azure/functions-action@v1
+        with:
+          app-name: ${{ env.FUNCTION_APP_NAME }}
+          package: '${{ github.workspace }}/notification-function/target/azure-functions/rate-me-notification-function'
+          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}

@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        Parent POM for the rate-me feedback platform.
+
+        This is an aggregator/parent module (packaging=pom): it does not produce an
+        artifact of its own, it only manages the shared configuration and the list of
+        child modules. Every child inherits the Java version, the Quarkus platform BOM
+        (which pins the version of every Quarkus extension) and the common plugins.
+    -->
+    <groupId>br.com.fiap</groupId>
+    <artifactId>rate-me-parent</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>rate-me-parent</name>
+    <description>FIAP Tech Challenge Fase 4 - feedback platform (Quarkus, hexagonal)</description>
+
+    <modules>
+        <module>feedback-service</module>
+        <module>report-service</module>
+        <module>notification-function</module>
+    </modules>
+
+    <properties>
+        <!-- Build / language -->
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!-- Quarkus platform (LTS line, compatible with Java 21) -->
+        <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
+        <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
+        <quarkus.platform.version>3.15.1</quarkus.platform.version>
+
+        <!-- Third-party extension versions not covered by the Quarkus BOM -->
+        <quarkus-logging-logback.version>1.1.2</quarkus-logging-logback.version>
+        <lombok.version>1.18.34</lombok.version>
+        <azure-functions-java-library.version>3.1.0</azure-functions-java-library.version>
+
+        <!-- Plugin versions -->
+        <compiler-plugin.version>3.13.0</compiler-plugin.version>
+        <surefire-plugin.version>3.5.1</surefire-plugin.version>
+        <jacoco-plugin.version>0.8.12</jacoco-plugin.version>
+
+        <!-- Test stack. JUnit and Mockito are already managed by the Quarkus BOM;
+             AssertJ is not, so it is pinned here. -->
+        <assertj.version>3.26.3</assertj.version>
+
+        <!-- Minimum line coverage enforced per module by jacoco:check.
+             Override on the command line to experiment: -Djacoco.minimum.coverage=0.99 -->
+        <jacoco.minimum.coverage>0.85</jacoco.minimum.coverage>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Imports the Quarkus BOM so children declare extensions without versions. -->
+            <dependency>
+                <groupId>${quarkus.platform.group-id}</groupId>
+                <artifactId>${quarkus.platform.artifact-id}</artifactId>
+                <version>${quarkus.platform.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Lombok is not managed by the Quarkus BOM; pin it here. -->
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+            </dependency>
+
+            <!-- AssertJ is not managed by the Quarkus BOM either. -->
+            <dependency>
+                <groupId>org.assertj</groupId>
+                <artifactId>assertj-core</artifactId>
+                <version>${assertj.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!--
+        Test stack shared by every module. The suites are plain JUnit + Mockito unit
+        tests: the hexagonal design puts an interface (port) in front of every external
+        system, so no container, database or SMTP server is needed to run them.
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <!--
+            Plugins declared here (as opposed to pluginManagement below) are inherited
+            and executed by every child module, so the coverage gate applies uniformly
+            without having to repeat it in each pom.
+        -->
+        <plugins>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco-plugin.version}</version>
+                <executions>
+                    <!--
+                        Attaches the coverage agent to the test JVM. It sets the
+                        ${argLine} property, which surefire picks up automatically
+                        because surefire has no <argLine> configuration of its own.
+                        If one is ever added there, it MUST use the late-binding form
+                        @{argLine} or the agent will not be attached.
+                    -->
+                    <execution>
+                        <id>jacoco-prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+
+                    <!-- Human-readable report: target/site/jacoco/index.html (+ csv/xml). -->
+                    <execution>
+                        <id>jacoco-report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/entity/**</exclude>
+                                <exclude>**/OpenApiConfig.class</exclude>
+                                <exclude>**/*Exception.class</exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+
+                    <!-- The gate: fails the build when a module drops below the minimum. -->
+                    <execution>
+                        <id>jacoco-check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <!--
+                                Excluded from the metric on purpose:
+                                  entity/**       anemic JPA entities (Lombok accessors only)
+                                  OpenApiConfig   holds annotations, has no executable body
+                                  *Exception      message/cause constructors only
+                                Lombok-generated members are filtered out separately via the
+                                lombok.config at the repository root.
+                            -->
+                            <excludes>
+                                <exclude>**/entity/**</exclude>
+                                <exclude>**/OpenApiConfig.class</exclude>
+                                <exclude>**/*Exception.class</exclude>
+                            </excludes>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>${jacoco.minimum.coverage}</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+
+        <!--
+            pluginManagement only declares versions/config; each child module activates
+            the Quarkus plugin in its own <build><plugins> section.
+        -->
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>${quarkus.platform.group-id}</groupId>
+                    <artifactId>quarkus-maven-plugin</artifactId>
+                    <version>${quarkus.platform.version}</version>
+                    <extensions>true</extensions>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>build</goal>
+                                <goal>generate-code</goal>
+                                <goal>generate-code-tests</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${compiler-plugin.version}</version>
+                    <configuration>
+                        <!-- Lombok is an annotation processor; declare it explicitly. -->
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>${lombok.version}</version>
+                            </path>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${surefire-plugin.version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>
